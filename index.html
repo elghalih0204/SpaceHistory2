@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="SpaceHistory: an interactive book on 13 retired NASA missions.">
+<title>SpaceHistory</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Concept: a mission logbook. Contents as illustrated cards, one page per spacecraft with a schematic drawing, two data plates (lifespans, timeline) and a map of links. */
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --paper:#F7F9FB; --scene:#DCE4EC; --line:#C5CED8; --fg:#14202B; --muted:#55626F; --accent:#1D4ED8; --accent-fg:#FFFFFF; --soft:#E3E8EE;
+  --c-energy:#B45309; --c-fuel:#0F766E; --c-fail:#BE185D; --c-budget:#4F46E5; --c-unknown:#6B7280;
+  --f-display:'Big Shoulders Display','Arial Narrow',sans-serif; --f-body:'Source Serif 4',Georgia,serif; --f-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0C1218; --surface:#131C26; --paper:#22303D; --scene:#0A1119; --line:#27343F; --fg:#E6ECF2; --muted:#93A3B3; --accent:#7FA4FF; --accent-fg:#0C1218; --soft:#1A2530;
+  --c-energy:#F59E0B; --c-fuel:#2DD4BF; --c-fail:#F472B6; --c-budget:#9CA3FF; --c-unknown:#9CA3AF; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C1218; --surface:#131C26; --paper:#22303D; --scene:#0A1119; --line:#27343F; --fg:#E6ECF2; --muted:#93A3B3; --accent:#7FA4FF; --accent-fg:#0C1218; --soft:#1A2530;
+  --c-energy:#F59E0B; --c-fuel:#2DD4BF; --c-fail:#F472B6; --c-budget:#9CA3FF; --c-unknown:#9CA3AF; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:400 17px/1.6 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:62rem;margin:0 auto}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px)));padding:.55rem max(16px,env(safe-area-inset-right,0px)) .55rem max(16px,env(safe-area-inset-left,0px))}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem 1.5rem}
+.brand{font:800 1.5rem/1 var(--f-display);text-decoration:none;color:var(--fg);letter-spacing:.04em;text-transform:uppercase}
+nav{display:flex;gap:.25rem;flex-wrap:wrap}
+nav a{font:500 .78rem var(--f-mono);text-decoration:none;color:var(--muted);padding:.35rem .6rem;border-radius:4px}
+nav a[aria-current="page"]{color:var(--fg);background:var(--soft)}
+nav a:hover{color:var(--fg)}
+main{padding-block:2rem 4rem}
+h1,h2,h3{font-family:var(--f-display);line-height:1;text-wrap:balance;letter-spacing:.015em;margin:0;text-transform:uppercase}
+h1{font-size:clamp(3rem,9vw,5.4rem);font-weight:800}
+h2{font-size:2rem;font-weight:800}
+h3{font-size:1.35rem;font-weight:800}
+.lead{font-size:1.2rem;max-width:40rem;margin:1rem 0 0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:500 .72rem var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hero{display:grid;gap:1.2rem;padding-bottom:1.5rem}
+.stats{display:flex;flex-wrap:wrap;gap:.5rem 2rem;font:400 .8rem var(--f-mono);color:var(--muted)}
+.stats b{color:var(--fg);font-weight:500}
+.filters{display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;margin:1.5rem 0 1.2rem;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.chip{font:500 .75rem var(--f-mono);border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:.3rem .7rem;border-radius:99px;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--c,var(--muted));flex:none;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(16.5rem,1fr));gap:.9rem;padding:0;margin:0;list-style:none}
+.card{display:flex;flex-direction:column;gap:.55rem;height:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;text-decoration:none;color:var(--fg);min-width:0;overflow:hidden}
+.card:hover{border-color:var(--accent)}
+.card .in{display:flex;flex-direction:column;gap:.5rem;padding:.2rem 1rem 1rem;flex:1}
+.card .meta{display:flex;justify-content:space-between;gap:.5rem;font:400 .72rem var(--f-mono);color:var(--muted)}
+.card p{margin:0;font-size:.95rem;color:var(--muted);line-height:1.45}
+.card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:.5rem;font:400 .74rem var(--f-mono);padding-top:.5rem;border-top:1px dashed var(--line)}
+.read{color:var(--accent)}
+.badge{display:inline-flex;align-items:center;gap:.4rem;font:500 .72rem var(--f-mono);color:var(--fg)}
+.badge .dot{background:var(--c)}
+.section{margin-top:3rem}
+/* illustrations */
+.il{background:var(--scene);border-bottom:1px solid var(--line)}
+.il svg{display:block;width:100%;height:auto}
+.il .s{fill:none;stroke:var(--fg);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.il .f{fill:var(--paper);stroke:var(--fg);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.il .m{fill:none;stroke:var(--muted);stroke-width:1.3;stroke-dasharray:3 3}
+.il .g{fill:none;stroke:var(--muted);stroke-width:1.3}
+.il .a{fill:var(--accent);stroke:none}
+.il .al{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round}
+.il .d{fill:var(--muted);stroke:none}
+.il .wm{font:500 8px 'JetBrains Mono',ui-monospace,monospace;fill:var(--muted);stroke:none;opacity:.9;letter-spacing:.04em}
+.ph2 .inset .wm,.cv-row .wm{display:none}
+.ph2 .inset::after{content:'AI-generated';position:absolute;right:4px;bottom:2px;font:500 .5em var(--f-mono);color:var(--muted)}
+.ph{aspect-ratio:16/10;background:var(--scene);overflow:hidden;border-bottom:1px solid var(--line)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.figure img{width:100%;height:auto;display:block}
+.figure{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);margin:0}
+.figure .il{border-bottom:0}
+.figure figcaption{font:400 .7rem var(--f-mono);color:var(--muted);padding:.5rem .8rem;border-top:1px solid var(--line)}
+/* fiche */
+.back{font:500 .78rem var(--f-mono);text-decoration:none}
+.fiche-head{margin:1rem 0 1.5rem;display:grid;grid-template-columns:minmax(0,1fr);gap:1.5rem;align-items:center}
+@media(min-width:48rem){.fiche-head{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}
+.fiche-head .txt{display:grid;gap:.8rem}
+.fiche-head h1{font-size:clamp(2.6rem,7vw,4.2rem);overflow-wrap:anywhere}
+.fiche-head .txt{min-width:0}
+.vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:0}
+.vitals div{background:var(--surface);padding:.7rem .9rem;min-width:0}
+.vitals dt{font:500 .66rem var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.vitals dd{margin:.15rem 0 0;font:500 .88rem var(--f-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cols{display:grid;grid-template-columns:minmax(0,1fr);gap:2rem;margin-top:2rem}
+@media(min-width:56rem){.cols{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:3rem}}
+.prose h3{margin:1.8rem 0 .5rem;color:var(--accent)}
+.prose h3:first-child{margin-top:0}
+.prose p{margin:.5rem 0;max-width:40rem}
+.prose ul{margin:.5rem 0;padding-left:1.2rem}
+.prose li{margin:.25rem 0}
+.aside{display:grid;gap:1rem;align-content:start}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1rem}
+.box h3{margin-bottom:.6rem;font-size:1.15rem}
+.kv{display:grid;gap:.5rem;margin:0}
+.kv div{display:flex;justify-content:space-between;gap:1rem;border-bottom:1px dashed var(--line);padding-bottom:.4rem}
+.kv dt{color:var(--muted);font-size:.9rem}
+.kv dd{margin:0;font:500 .82rem var(--f-mono);text-align:right}
+.links{display:grid;gap:.7rem;margin:0;padding:0;list-style:none}
+.links a{font-weight:600}
+.links span{display:block;font-size:.9rem;color:var(--muted);line-height:1.4}
+.btn{font:500 .78rem var(--f-mono);border:1px solid var(--fg);background:var(--fg);color:var(--bg);padding:.55rem .9rem;border-radius:4px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.pager{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line)}
+.pager a{text-decoration:none;font-weight:600;max-width:48%}
+.note{font-size:.9rem;color:var(--muted);border-left:2px solid var(--line);padding-left:.8rem;margin:1rem 0}
+/* chart */
+.chart{margin-top:1.5rem}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;font:400 .75rem var(--f-mono);color:var(--muted);margin-bottom:1rem}
+.legend i{display:inline-block;width:.75rem;height:.75rem;border-radius:50%;vertical-align:-1px;margin-right:.35rem}
+.lg-plan{border:2px solid var(--fg);background:var(--bg)}
+.lg-real{background:var(--fg)}
+.crow{display:grid;grid-template-columns:10rem minmax(0,1fr);gap:.2rem 1rem;align-items:center;padding:.55rem 0;border-bottom:1px dashed var(--line);text-decoration:none;color:var(--fg)}
+.crow:hover .cl{color:var(--accent)}
+.cl{font-weight:600;font-size:.95rem;line-height:1.25}
+.cl small{display:block;font:400 .68rem var(--f-mono);color:var(--muted);font-weight:400}
+.ctrack{position:relative;height:1.6rem;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat}
+.tick{position:absolute;top:0;bottom:0;width:1px;background:var(--line);opacity:.6}
+.cline{position:absolute;top:50%;height:3px;margin-top:-1.5px;background:var(--c)}
+.cp,.cr{position:absolute;top:50%;width:.9rem;height:.9rem;margin:-.45rem 0 0 -.45rem;border-radius:50%}
+.cp{border:2px solid var(--fg);background:var(--bg)}
+.cr{background:var(--c)}
+.cval{grid-column:2;font:400 .7rem var(--f-mono);color:var(--muted)}
+.axis{position:relative;height:1.4rem;margin-left:11rem;font:400 .68rem var(--f-mono);color:var(--muted)}
+.axis span{position:absolute;transform:translateX(-50%)}
+@media(max-width:40rem){.crow{grid-template-columns:minmax(0,1fr)}.cval{grid-column:1}.axis{margin-left:0}}
+/* gantt */
+.grow{display:grid;grid-template-columns:10rem minmax(0,1fr);gap:.1rem 1rem;align-items:center;padding:.25rem 0;text-decoration:none;color:var(--fg)}
+.grow:hover .cl{color:var(--accent)}
+.gtrack{position:relative;height:1.1rem;border-left:1px solid var(--line)}
+.gbar{position:absolute;top:.15rem;bottom:.15rem;border-radius:2px;background:var(--c);min-width:4px}
+.gaxis{position:relative;height:1.4rem;margin-left:11rem;font:400 .68rem var(--f-mono);color:var(--muted)}
+.gaxis span{position:absolute;transform:translateX(-50%)}
+.gvl{position:absolute;top:0;bottom:0;width:1px;background:var(--line);opacity:.5}
+@media(max-width:40rem){.grow{grid-template-columns:minmax(0,1fr)}.gaxis{margin-left:0}}
+/* relations */
+.rel{display:grid;grid-template-columns:repeat(auto-fill,minmax(18rem,1fr));gap:.8rem;margin-top:1rem}
+.rel .box a{font-weight:600}
+.rel .arrow{color:var(--muted);font-family:var(--f-mono)}
+.themes{display:grid;gap:.8rem;margin-top:1rem}
+.themes .chips{margin-top:.6rem}
+.themes .chip{text-decoration:none}
+footer{border-top:1px solid var(--line);padding-block:1.5rem;font-size:.9rem;color:var(--muted)}
+ol.src{padding-left:1.2rem}
+ol.src li{margin:.3rem 0;overflow-wrap:anywhere}
+.pg-title{font-size:clamp(2.4rem,7vw,3.6rem)}
+@media(prefers-reduced-motion:no-preference){.card{transition:border-color .15s}}
+
+.mv{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:1rem;margin-top:1.2rem;align-items:start}
+@media(max-width:52rem){.mv{grid-template-columns:minmax(0,1fr)}}
+#cv{width:100%;aspect-ratio:4/3;display:block;background:var(--scene);border:1px solid var(--line);border-radius:6px;touch-action:pan-y;cursor:grab}
+.mv-ctl{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem;align-items:center}
+.mv-ctl .btn{padding:.4rem .7rem}
+.mv-ex{display:flex;align-items:center;gap:.5rem;font:500 .75rem var(--f-mono);color:var(--muted);flex:1 1 11rem}
+.mv-ex input{flex:1;min-width:6rem;accent-color:var(--accent)}
+.mv-side{display:grid;gap:.8rem;min-width:0}
+.mv-side .box p{margin:.4rem 0}
+.mv-parts{list-style:none;margin:0;padding:0;display:grid;gap:.3rem}
+.mv-parts button{width:100%;display:flex;gap:.6rem;align-items:center;text-align:left;font:500 .82rem var(--f-mono);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.45rem .6rem;cursor:pointer}
+.mv-parts button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+.mv-parts .num{display:inline-grid;place-items:center;width:1.4rem;height:1.4rem;border:1.5px solid var(--accent);border-radius:50%;font-size:.7rem;flex:none}
+
+main.wide{max-width:80rem}
+:root{--cover-bg:#0F1B2B}
+.fbclip{overflow-x:clip;padding-block:.6rem 1rem;margin-top:.6rem}
+.fbk{container-type:inline-size;margin:0 auto;position:relative}
+.fbk.spread{--bw:min(100%,calc((100vh - 12rem)*1.44),76rem);width:var(--bw);aspect-ratio:1.44/1;perspective:2600px;transition:transform .7s cubic-bezier(.5,.1,.2,1)}
+.fbk.spread.s-start{transform:translateX(-25%)}
+.fbk.spread.s-end{transform:translateX(25%)}
+.leaf{position:absolute;top:0;left:50%;width:50%;height:100%;transform-origin:left center;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.5,.1,.2,1)}
+.leaf.turned{transform:rotateY(-180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;background:var(--surface);cursor:pointer;border:1px solid var(--line)}
+.face.front{border-radius:0 6px 6px 0;box-shadow:inset 14px 0 18px -14px rgba(0,0,0,.35)}
+.face.back{transform:rotateY(180deg);border-radius:6px 0 0 6px;box-shadow:inset -14px 0 18px -14px rgba(0,0,0,.35)}
+.pagein{position:relative;height:100%;padding:6% 7% 8%;display:flex;flex-direction:column;gap:.55em;overflow:hidden;font-size:calc(var(--base,1.6cqw)*var(--k,1));line-height:1.45;color:var(--fg)}
+.pagein h2{font-size:2.3em}.pagein h3{font-size:1.15em;color:var(--accent);margin-top:.5em}
+.pagein p{margin:0}.pagein ul,.pagein ol{margin:0;padding-left:1.1em}.pagein li{margin:.15em 0}
+.pagein .eyebrow{font-size:.68em}
+.mut{color:var(--muted)}
+.pn{position:absolute;bottom:3%;font:500 .7em var(--f-mono);color:var(--muted)}.pn.l{left:7%}.pn.r{right:7%}
+.ph2{position:relative;flex:0 0 38%;margin:-6% -7% 0;overflow:hidden;background:var(--scene);border-bottom:1px solid var(--line)}
+.ph2 img{width:100%;height:100%;object-fit:cover;display:block}
+.ph2 .inset{position:absolute;right:4%;bottom:6%;width:34%;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--scene)}
+.ph2 .inset svg{display:block;width:100%;height:auto}
+.cap{font-size:.68em;color:var(--muted);font-style:italic;line-height:1.3;margin-top:-.2em}
+.tag{font-size:1.05em}
+.vt{display:grid;grid-template-columns:1fr 1fr;gap:.35em .8em;margin:.2em 0 0}
+.vt div{border-top:1px dashed var(--line);padding-top:.25em;min-width:0}.vt .wide{grid-column:1/-1}
+.vt dt{font:500 .6em var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.vt dd{margin:0;font:500 .78em var(--f-mono);overflow-wrap:anywhere}
+.kf{display:flex;flex-wrap:wrap;gap:.3em 1em;font:500 .74em var(--f-mono);margin-top:auto}
+.kf i{font-style:normal;color:var(--muted);font-weight:400}
+.see{margin-top:auto;display:flex;flex-wrap:wrap;gap:.3em;align-items:center;font-size:.8em;color:var(--muted)}
+.gochip{font:500 .8em var(--f-mono);border:1px solid var(--line);background:var(--bg);color:var(--accent);padding:.15em .6em;border-radius:99px;cursor:pointer;text-decoration:none;display:inline-block}
+.toc{list-style:none;padding:0!important;display:grid;gap:.1em}
+.toc-b{display:flex;gap:.5em;width:100%;align-items:baseline;border:0;background:none;padding:.25em 0;color:var(--fg);font-family:var(--f-body);font-size:1em;text-align:left;border-radius:0}
+.toc-b i{flex:1;border-bottom:1px dotted var(--muted);transform:translateY(-.25em)}
+.toc-b b{font:500 .85em var(--f-mono);color:var(--muted)}
+.toc-b:hover span{color:var(--accent)}
+.lg{list-style:none;padding:0!important;display:grid;gap:.2em;font:.8em var(--f-mono)}
+.lg li{display:flex;gap:.5em;align-items:center}
+.cover{background:var(--cover-bg);--fg:#EAF0F6;--paper:#22303D;--muted:#93A3B3;--accent:#7FA4FF;--scene:transparent;--line:#2A3A4C;color:#EAF0F6;justify-content:space-between;text-align:left}
+.cover h1{font-size:2.9em;line-height:.92}
+.cover p{color:#93A3B3;font-size:1.1em}
+.cover .il{border:0}
+.cv-art svg,.cv-row svg{display:block;width:100%;height:auto}
+.cv-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;opacity:.9}
+.coverface{background:var(--cover-bg)!important}
+.lrows{display:grid;gap:.05em}.lr{padding:.25em 0;border-bottom:1px dashed var(--line)}
+.ll{display:flex;justify-content:space-between;gap:.5em;font-size:.82em}.ll span{font:.82em var(--f-mono);color:var(--muted)}
+.lr .ctrack{height:1.1em}
+.pagein .cp,.pagein .cr{width:.8em;height:.8em;margin:-.4em 0 0 -.4em}
+.ax{position:relative;height:1.3em;font:.65em var(--f-mono);color:var(--muted)}.ax span{position:absolute;transform:translateX(-50%)}
+.trows{display:grid;gap:.18em}.tr{display:grid;grid-template-columns:34% 1fr;gap:.5em;align-items:center;font-size:.8em}
+.tr .gtrack{height:.9em}
+.tax{margin-left:35%}
+.th,.rl{border:1px solid var(--line);border-radius:5px;padding:.5em .7em;background:var(--bg)}
+.th h3{margin:0 0 .15em}.th p{font-size:.85em;color:var(--muted);margin-bottom:.3em}.th>div,.rl>div{display:flex;flex-wrap:wrap;gap:.3em;align-items:center}
+.rl p{font-size:.85em;color:var(--muted);margin-top:.2em}
+.src2{display:grid;gap:.2em}.src2 a{font-size:.95em}
+.endp{justify-content:center;align-items:flex-start;gap:1em}
+.fb-ctl{display:flex;justify-content:center;align-items:center;gap:.7rem;flex-wrap:wrap;margin-top:.4rem}
+.fb-ctl .btn:disabled{opacity:.35;cursor:default}
+.fb-ctl .mono{font-size:.78rem;color:var(--muted);min-width:8rem;text-align:center}
+/* single page (phones, small tablets) */
+.fbk.single{display:grid;perspective:1600px;width:100%;max-width:34rem}
+.pgs{grid-area:1/1;opacity:0;pointer-events:none;transform-origin:left center;transition:transform .55s cubic-bezier(.5,.1,.2,1),opacity .4s;visibility:hidden}
+.pgs.on{opacity:1;pointer-events:auto;transform:none;visibility:visible}
+.pgs.before{transform:rotateY(-75deg)}.pgs.after{transform:translateX(6%)}
+.fbk.single .face{position:relative;inset:auto;border-radius:6px;box-shadow:0 8px 24px -14px rgba(0,0,0,.5)}
+.fbk.single .pagein{height:auto;overflow:visible;font-size:15px;padding:1.2rem 1.2rem 2.4rem}
+.fbk.single .ph2{flex:none;aspect-ratio:16/10;margin:-1.2rem -1.2rem 0}
+.fbk.single .cover{min-height:34rem}
+.fbk.single .cover h1{font-size:3em}
+</style>
+
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#contents">SpaceHistory</a>
+  <nav id="nav" aria-label="Sections">
+    <a href="#contents" data-v="contents">Contents</a>
+    <a href="#book" data-v="book">Flipbook</a>
+    <a href="#lifespans" data-v="lifespans">Lifespans</a>
+    <a href="#timeline" data-v="timeline">Timeline</a>
+    <a href="#models" data-v="models">3D models</a>
+    <a href="#links" data-v="links">Links</a>
+    <a href="#sources" data-v="sources">Sources</a>
+  </nav>
+</div></header>
+
+<main class="wrap" id="app"></main>
+<footer><div class="wrap">Data from the NASA / NSSDC pages listed under Sources. Photos and artwork: NASA. Schematic drawings and 3D models are AI-generated, simplified and not to scale. NASA calls these missions “completed” or “successful”, not “abandoned”.</div></footer>
+
+<script>
+const CAUSES={
+  energy:{t:'Power, dust or cold',c:'var(--c-energy)'},
+  fuel:{t:'Out of fuel',c:'var(--c-fuel)'},
+  fail:{t:'Failure or accident',c:'var(--c-fail)'},
+  budget:{t:'Budget decision',c:'var(--c-budget)'},
+  unknown:{t:'Cause not stated',c:'var(--c-unknown)'}
+};
+const PLACES={moon:'Moon',mars:'Mars',space:'Deep space'};
+
+/* ---------- illustrations (240 x 150 schematic drawings) ---------- */
+const STARS=[[14,18,1.2],[40,40,1],[68,12,1.4],[92,30,1],[150,14,1.2],[186,28,1.6],[222,16,1],[228,60,1.2],[10,86,1.2],[30,120,1],[60,138,1.2],[200,132,1],[170,10,1],[114,8,1],[20,60,1],[212,92,1]];
+const stars=n=>STARS.slice(0,n||STARS.length).map(([x,y,r])=>`<circle class="d" cx="${x}" cy="${y}" r="${r}"/>`).join('');
+const ground=`<path class="g" d="M0 124H240"/><path class="g" d="M12 130h20M70 132h28M140 130h24M196 133h30"/>`;
+const wrap=(inner,label)=>`<svg viewBox="0 0 240 150" role="img" aria-label="${label} (AI-generated drawing)">${inner}<text class="wm" x="236" y="146" text-anchor="end">AI-generated</text></svg>`;
+const LM=(extra)=>`<g transform="translate(-16 0)">
+  <path class="s" d="M92 100L64 122M148 100L176 122M108 104L104 122M132 104L136 122"/>
+  <path class="s" d="M58 122h12M170 122h12M98 122h12M130 122h12"/>
+  <path class="f" d="M92 76h56l4 26H88z"/>
+  <path class="f" d="M102 48h36l6 12v16H96V60z"/>
+  <path class="a" d="M108 58h10l-5 8z"/><path class="a" d="M122 58h10l-5 8z"/>
+  <path class="s" d="M120 48V34M110 34h20"/>
+  <path class="s" d="M96 100L86 122"/>
+</g>${extra||''}`;
+const ILL={
+surveyor3:()=>wrap(`${stars(10)}${ground}
+  <path class="s" d="M110 86L80 121M130 86L160 121M120 90V121"/><circle class="f" cx="80" cy="122" r="3"/><circle class="f" cx="160" cy="122" r="3"/><circle class="f" cx="120" cy="122" r="3"/>
+  <rect class="f" x="106" y="62" width="28" height="28" rx="3"/>
+  <path class="s" d="M120 62V30"/><rect class="f" x="112" y="20" width="16" height="10" rx="2"/><circle class="a" cx="120" cy="25" r="2.5"/>
+  <path class="f" d="M96 44h48l-4 8H100z"/>
+  <path class="s" d="M134 70l28-14"/><ellipse class="f" cx="164" cy="54" rx="9" ry="4" transform="rotate(-25 164 54)"/>
+  <path class="m" d="M106 82L88 94L82 108"/><path class="s" d="M82 108l-6 4"/>`,'Schematic of Surveyor 3 on the lunar surface'),
+apollo11:()=>wrap(`${stars(10)}${ground}${LM(`
+  <rect class="f" x="186" y="108" width="20" height="14" rx="1"/><path class="s" d="M186 112h-10M206 112h10"/>
+  <path class="s" d="M224 122v-12"/><rect class="f" x="219" y="106" width="10" height="6"/>
+  <circle class="a" cx="196" cy="115" r="2.5"/>`)}`,'Schematic of the Apollo 11 lunar module Eagle with the EASEP instrument package'),
+apollo12:()=>wrap(`${stars(10)}${ground}${LM(`
+  <rect class="f" x="180" y="108" width="16" height="14" rx="1"/><path class="s" d="M188 108V92"/><circle class="f" cx="188" cy="90" r="4"/>
+  <path class="s" d="M196 118h14"/><rect class="f" x="210" y="112" width="12" height="10" rx="2"/><path class="s" d="M214 112v10M218 112v10"/>
+  <path class="m" d="M230 122l8-8"/>`)}`,'Schematic of Apollo 12 lunar module Intrepid with the ALSEP station and its nuclear generator'),
+apollo15:()=>wrap(`${stars(10)}${ground}${LM(`
+  <path class="f" d="M182 106h44v8h-44z"/><circle class="f" cx="190" cy="119" r="6"/><circle class="f" cx="218" cy="119" r="6"/>
+  <path class="s" d="M204 106V94"/><ellipse class="f" cx="204" cy="90" rx="8" ry="5"/><circle class="a" cx="204" cy="90" r="1.8"/>`)}`,'Schematic of Apollo 15 lunar module Falcon next to the lunar rover'),
+viking1:()=>wrap(`${stars(8)}${ground}
+  <path class="s" d="M92 108L66 122M148 108L174 122M120 108V122"/>
+  <path class="f" d="M86 84h68l8 12-8 12H86L78 96z"/>
+  <path class="f" d="M56 90h24v10H56z"/><path class="s" d="M62 90v10M68 90v10M74 90v10"/>
+  <path class="f" d="M160 90h24v10h-24z"/><path class="s" d="M166 90v10M172 90v10M178 90v10"/>
+  <path class="s" d="M120 84V58"/><ellipse class="f" cx="120" cy="52" rx="18" ry="6"/><circle class="a" cx="120" cy="52" r="2"/>
+  <path class="s" d="M146 84L170 62"/><rect class="f" x="166" y="56" width="12" height="8"/>
+  <path class="m" d="M108 100L94 114"/>`,'Schematic of the Viking 1 lander on Mars'),
+pathfinder:()=>wrap(`${stars(6)}${ground}
+  <path class="m" d="M6 122Q26 40 46 122"/><path class="m" d="M46 122Q60 78 74 122"/>
+  <circle class="m" cx="26" cy="70" r="13"/><circle class="a" cx="26" cy="70" r="3"/>
+  <path class="f" d="M100 120h40l-20-14z"/><path class="f" d="M100 120L72 122l10-8 20-6z"/><path class="f" d="M140 120l28 2-10-8-20-6z"/>
+  <path class="s" d="M120 106V94"/><circle class="a" cx="120" cy="92" r="3"/>
+  <rect class="f" x="178" y="108" width="24" height="9" rx="1"/><path class="s" d="M176 104h28"/><circle class="f" cx="183" cy="121" r="3.5"/><circle class="f" cx="190" cy="121" r="3.5"/><circle class="f" cx="197" cy="121" r="3.5"/>`,'Schematic of Mars Pathfinder: airbag bounces, open lander and the Sojourner rover'),
+mer:()=>wrap(`${stars(8)}${ground}
+  <path class="s" d="M92 114L106 98L120 114M148 114L132 98"/>
+  <circle class="f" cx="92" cy="114" r="9"/><circle class="f" cx="120" cy="114" r="9"/><circle class="f" cx="148" cy="114" r="9"/>
+  <rect class="f" x="94" y="88" width="56" height="14" rx="2"/>
+  <path class="f" d="M82 86h82l-10-12H94z"/>
+  <path class="s" d="M150 88V50"/><rect class="f" x="142" y="40" width="16" height="10" rx="2"/><circle class="a" cx="150" cy="45" r="2.5"/>
+  <ellipse class="f" cx="108" cy="70" rx="10" ry="3.5"/>`,'Schematic of a Mars Exploration Rover'),
+insight:()=>wrap(`${stars(6)}${ground}
+  <path class="s" d="M104 102L92 122M136 102L148 122M120 102V122"/>
+  <rect class="f" x="100" y="90" width="40" height="12" rx="2"/>
+  <circle class="f" cx="52" cy="76" r="32"/><circle class="g" cx="52" cy="76" r="22"/><circle class="g" cx="52" cy="76" r="10"/>
+  <circle class="f" cx="188" cy="76" r="32"/><circle class="g" cx="188" cy="76" r="22"/><circle class="g" cx="188" cy="76" r="10"/>
+  <path class="s" d="M84 82L100 94M156 82L140 94"/>
+  <path class="s" d="M120 90V74l16-10"/><circle class="a" cx="137" cy="63" r="3"/>
+  <path class="f" d="M148 122a11 11 0 0 1 22 0z"/>
+  <circle class="d" cx="40" cy="64" r="1.5"/><circle class="d" cx="62" cy="86" r="1.5"/><circle class="d" cx="48" cy="90" r="1.2"/><circle class="d" cx="176" cy="68" r="1.5"/><circle class="d" cx="198" cy="88" r="1.5"/>`,'Schematic of the InSight lander with its two large circular solar panels'),
+ingenuity:()=>wrap(`${stars(6)}${ground}
+  <path class="s" d="M110 106L92 122M130 106L148 122M116 106L112 122M124 106L128 122"/>
+  <rect class="f" x="106" y="84" width="28" height="22" rx="3"/><circle class="a" cx="120" cy="96" r="3.5"/>
+  <path class="s" d="M120 84V30"/>
+  <path class="f" d="M102 22h36l-4 8h-28z"/>
+  <ellipse class="m" cx="120" cy="52" rx="64" ry="4"/><ellipse class="m" cx="120" cy="66" rx="64" ry="4"/>
+  <path class="s" d="M56 50L184 54M58 68L182 64" style="stroke-width:3.5"/>
+  <circle class="f" cx="120" cy="52" r="4"/><circle class="f" cx="120" cy="66" r="4"/>`,'Schematic of the Ingenuity Mars helicopter with its two rotors'),
+kepler:()=>wrap(`${stars()}
+  <circle class="a" cx="30" cy="48" r="7"/><circle class="m" cx="30" cy="48" r="13"/>
+  <path class="f" d="M70 60h68v42H70z"/><ellipse class="f" cx="70" cy="81" rx="8" ry="21"/>
+  <rect class="f" x="138" y="64" width="34" height="34" rx="3"/>
+  <path class="f" d="M146 64l8-34h32l-8 34z"/><path class="f" d="M146 98l8 28h32l-8-28z"/>
+  <path class="al" d="M10 136H38L42 142H62L66 136H94"/>`,'Schematic of the Kepler space telescope with a transit light curve'),
+dawn:()=>wrap(`${stars()}
+  <circle class="f" cx="204" cy="32" r="16"/><circle class="g" cx="198" cy="28" r="4"/><circle class="g" cx="210" cy="38" r="3"/>
+  <rect class="f" x="10" y="68" width="92" height="22"/><path class="g" d="M32 68v22M54 68v22M76 68v22"/>
+  <rect class="f" x="138" y="68" width="92" height="22"/><path class="g" d="M160 68v22M182 68v22M204 68v22"/>
+  <path class="s" d="M102 79h6M132 79h6"/>
+  <rect class="f" x="108" y="64" width="24" height="30" rx="2"/>
+  <path class="s" d="M120 64V54"/><ellipse class="f" cx="120" cy="50" rx="13" ry="4.5"/>
+  <path class="f" d="M114 94h12l-3 8h-6z"/>
+  <path d="M116 102h8l-4 30z" style="fill:var(--accent);opacity:.45"/><path class="al" d="M120 104v22"/>`,'Schematic of the Dawn spacecraft with its ion engine and Ceres'),
+near:()=>wrap(`${stars(12)}
+  <path class="f" d="M176 118Q174 102 196 102Q222 98 228 114Q232 128 210 132Q184 136 176 118z"/><circle class="g" cx="196" cy="114" r="5"/><circle class="g" cx="214" cy="120" r="3.5"/><circle class="g" cx="206" cy="108" r="2.5"/>
+  <rect class="f" x="46" y="68" width="52" height="26"/><path class="g" d="M63 68v26M80 68v26"/>
+  <rect class="f" x="142" y="68" width="52" height="26"/><path class="g" d="M159 68v26M176 68v26"/>
+  <path class="s" d="M98 81h4M138 81h4"/>
+  <path class="f" d="M102 64h36v34h-36z"/>
+  <path class="s" d="M120 64V56"/><ellipse class="f" cx="120" cy="52" rx="16" ry="5"/><circle class="a" cx="120" cy="52" r="2"/>
+  <path class="m" d="M112 130Q150 146 188 132"/>`,'Schematic of the NEAR Shoemaker spacecraft above the asteroid Eros'),
+pioneer10:()=>wrap(`${stars()}
+  <path class="f" d="M64 38Q120 108 176 38z"/><ellipse class="f" cx="120" cy="38" rx="56" ry="10"/>
+  <path class="s" d="M120 38V16"/><rect class="f" x="115" y="8" width="10" height="8" rx="1"/>
+  <rect class="f" x="108" y="72" width="24" height="16" rx="2"/><rect class="a" x="112" y="76" width="7" height="4"/>
+  <path class="s" d="M110 88L72 110M130 88L170 110"/>
+  <rect class="f" x="42" y="106" width="32" height="9" rx="3"/><rect class="f" x="166" y="106" width="32" height="9" rx="3"/>
+  <path class="m" d="M120 88V132"/><circle class="f" cx="120" cy="134" r="3.5"/>`,'Schematic of Pioneer 10 with its large dish antenna and nuclear generators')
+};
+
+/* ---------- content ---------- */
+const M=[
+{id:'surveyor3',name:'Surveyor 3',place:'moon',launch:'1967-04-17',start:'1967-04-20',end:'1967-05-04',cause:'energy',
+ tagline:`A robot scout landed two and a half years before the astronauts.`,
+ where:`Oceanus Procellarum, Moon (3°S, 23.41°W)`,
+ spans:[{l:'Surveyor 3',a:'1967-04-20',b:'1967-05-04',p:null}],
+ purpose:`The Surveyor probes were built to prepare crewed landings: check that a lander would not sink into the ground, photograph the surface and measure the soil before sending people there.`,
+ story:[`Surveyor 3 launched on 17 April 1967 and landed on 20 April. The landing was rough: it bounced twice because its radar was fooled by highly reflective rocks, and its engine did not shut off at 4.3 m altitude.`,
+  `It came to rest in a crater and worked for fourteen days. In November 1969 Apollo 12 landed about 180 m away, and the astronauts brought back the scoop and the camera, roughly ten kilograms of parts, to study how they had aged on the Moon.`],
+ tech:[`A television camera: 6,326 images sent back.`,`A scoop arm that dug 4 trenches and ran 4 bearing tests and 13 impact tests.`,`Result: a soil like wet sand, about 0.7 kg/cm².`,`Mass 997.9 kg. Its Centaur launch stage could restart in flight.`],
+ stop:`The last contact was on 4 May 1967, two days after the lunar night began. Without sunlight the craft no longer had the power or the warmth to answer.`,
+ facts:[['Images','6,326'],['Mass','997.9 kg'],['Soil','≈ 0.7 kg/cm²']],
+ rel:[['apollo12',`Apollo 12 landed 180 m away and recovered parts.`],['pioneer10',`The third-stage motor of Pioneer 10 derives from Surveyor's.`],['viking1',`Same idea: a scoop arm to test the ground of another world.`]]},
+
+{id:'apollo11',name:'Apollo 11: Eagle and EASEP',place:'moon',launch:'1969-07-16',start:'1969-07-20',end:'1969-08-27',cause:'unknown',
+ tagline:`The first steps, and a small science kit left behind.`,
+ where:`Sea of Tranquility, Moon (0.67°N, 23.47°E)`,
+ spans:[{l:'EASEP',a:'1969-07-20',b:'1969-08-27',p:null}],
+ purpose:`The lunar module Eagle had to put two men on the Moon and bring them home. Because their stay was so short, EASEP was a light set of experiments that could be set up quickly.`,
+ story:[`Launched on 16 July 1969, Eagle landed on 20 July. The astronauts spent 21 h 36 on the surface, walked about 250 m and brought back 21.55 kg of samples.`,
+  `EASEP was stopped by command from Earth on 3 August 1969, then restarted. On 27 August it no longer accepted commands. Eagle's ascent stage probably crashed within 1 to 4 months, but its exact fate is unknown.`],
+ tech:[`EASEP: 48 kg, with a seismometer and a dust detector.`,`An isotope heater to survive the cold lunar night.`,`A laser retroreflector about 5 m away, used to measure the Earth–Moon distance.`],
+ stop:`EASEP stopped accepting commands on 27 August 1969. The NASA page does not give the cause.`,
+ facts:[['On surface','21 h 36'],['Samples','21.55 kg'],['EASEP','48 kg']],
+ rel:[['apollo12',`EASEP is the lightweight forerunner of Apollo 12's ALSEP.`]]},
+
+{id:'apollo12',name:'Apollo 12: Intrepid and ALSEP',place:'moon',launch:'1969-11-14',start:'1969-11-19',end:'1977-09-30',cause:'unknown',
+ tagline:`A pinpoint landing and the first full science station on the Moon.`,
+ where:`Oceanus Procellarum, Moon (3.01°S, 23.42°W)`,
+ spans:[{l:'ALSEP Apollo 12',a:'1969-11-19',b:'1977-09-30',p:365,pt:'≈ 1 year (to confirm)'}],
+ purpose:`Show that a landing could be made at a chosen spot, here next to Surveyor 3, and set up ALSEP, a set of instruments run by a nuclear generator to measure the Moon for years.`,
+ story:[`Launched on 14 November 1969, Intrepid landed on 19 November (UT). Two moonwalks totalling 7 h 45, 1.35 km covered, 34.35 kg of samples.`,
+  `The TV camera was destroyed by the Sun. The ascent stage was crashed on purpose about 60 km away, producing the first artificial moonquake ever recorded.`],
+ tech:[`ALSEP: 6 instruments and a 25 kg central station.`,`SNAP-27 isotope generator: about 70 W from plutonium-238.`],
+ stop:`All ALSEP stations were shut down by command on 30 September 1977. The NASA page gives no reason; the end of funding is the explanation often cited (to confirm).`,
+ facts:[['Moonwalks','7 h 45'],['Distance','1.35 km'],['Samples','34.35 kg'],['Generator','≈ 70 W']],
+ rel:[['surveyor3',`Landed 180 m from Surveyor 3.`],['apollo11',`A fuller version of the EASEP kit.`],['apollo15',`Network switched off the same day.`]]},
+
+{id:'apollo15',name:'Apollo 15: Falcon and ALSEP',place:'moon',launch:'1971-07-26',start:'1971-07-31',end:'1977-09-30',cause:'unknown',
+ tagline:`Three days on the Moon, a rover, and a plaque for the fallen.`,
+ where:`Hadley–Apennine, Moon (26.13°N, 3.63°E)`,
+ spans:[{l:'ALSEP Apollo 15',a:'1971-07-31',b:'1977-09-30',p:365,pt:'≈ 1 year (to confirm)'}],
+ purpose:`Apollo 15 began longer stays with an electric vehicle, to go farther, bring back more samples and set up a richer ALSEP that included a heat-flow probe.`,
+ story:[`Launched on 26 July 1971, Falcon landed on 30 July: 66 h 55 on site, 3 moonwalks totalling 18 h 35, 27.9 km by rover, 77.31 kg of samples. A famous demonstration: a hammer and a feather dropped together fall at the same rate.`,
+  `ALSEP was set up on 31 July. The ascent stage crashed on 3 August 1971. The crew left a plaque and a small figure honouring 14 American and Soviet space explorers who had died.`],
+ tech:[`ALSEP: 7 instruments, including a heat-flow probe.`,`An electric lunar rover: 27.9 km driven.`,`Power from an isotope generator.`],
+ stop:`As for Apollo 12, ALSEP was switched off by command on 30 September 1977 with the rest of the network. The NASA page gives no reason.`,
+ facts:[['On surface','66 h 55'],['Rover','27.9 km'],['Samples','77.31 kg']],
+ rel:[['apollo12',`Same ALSEP design and same shutdown date: 30 September 1977.`]]},
+
+{id:'viking1',name:'Viking 1',place:'mars',launch:'1975-08-20',start:'1976-07-20',end:'1982-11-11',cause:'fail',
+ tagline:`The first hunt for life on Mars, and six years of Martian weather.`,
+ where:`Chryse Planitia, Mars (22.48°N, 47.94°W)`,
+ spans:[{l:'Viking 1 lander',a:'1976-07-20',b:'1982-11-11',p:90,pt:'90 days (to confirm)'}],
+ purpose:`Viking was meant to look for signs of life on Mars with biology experiments, analyse the soil chemistry and map the planet from orbit to choose landing sites.`,
+ story:[`The original spacecraft was swapped before launch (20 August 1975) because of discharged batteries. It entered Mars orbit on 19 June 1976 and landed on 20 July 1976, about 28 km from the target after the site was changed.`,
+  `The biology results were ambiguous (a weak positive), the search for organic molecules was negative and the seismometer did not work. The orbiter was shut down on 7 August 1980 when its attitude-control gas ran out. The lander was lost on 11 November 1982 after a faulty command. It had been renamed the Thomas Mutch Memorial Station in January 1982.`],
+ tech:[`An orbiter and a lander, 3,527 kg in total.`,`Two SNAP-19 isotope generators.`,`With Viking 2: 52,663 images from orbit and 4,500 from the ground.`],
+ stop:`A command sent in error ended contact with the lander on 11 November 1982, after more than six years. The orbiter had stopped earlier, out of gas.`,
+ facts:[['Mass','3,527 kg'],['Images (×2)','57,163'],['Orbiter ended','7 Aug 1980']],
+ rel:[['surveyor3',`Same logic: an arm to dig the ground.`],['insight',`Viking's seismometer failed; InSight recorded over 1,300 marsquakes.`]]},
+
+{id:'pathfinder',name:'Mars Pathfinder',place:'mars',launch:'1996-12-04',start:'1997-07-04',end:'1997-09-27',cause:'unknown',
+ tagline:`Landing on Mars with airbags, on a budget.`,
+ where:`Ares Vallis, Mars`,
+ spans:[{l:'Mars Pathfinder',a:'1997-07-04',b:'1997-09-27',p:30,pt:'30 days (to confirm)'}],
+ purpose:`Pathfinder was first of all a technology demonstration: test a low-cost descent with airbags and a small rover before committing to heavier missions.`,
+ story:[`Launched on 4 December 1996, it landed on 4 July 1997, bouncing about 15 times, up to 15 m high, with a first impact at 14 m/s. It was renamed the Carl Sagan Memorial Station.`,
+  `It returned more than 16,500 images, plus 550 from its Sojourner rover and over 15 chemical analyses. It observed dust devils and water-ice clouds. Contact ended on 27 September 1997.`],
+ tech:[`Airbag landing.`,`Sojourner rover: 10.6 kg.`,`A fixed base station that relayed the rover's data.`],
+ stop:`Last contact on 27 September 1997. The NASA page does not state the cause.`,
+ facts:[['Rover','10.6 kg'],['Images','16,500 + 550'],['Bounces','≈ 15']],
+ rel:[['mer',`Pathfinder's airbags were reused for Spirit and Opportunity.`]]},
+
+{id:'mer',name:'Spirit and Opportunity',place:'mars',launch:'2003-06-10',start:'2004-01-03',end:'2018-06-10',cause:'energy',
+ tagline:`Two rovers planned for 90 sols, one of which drove for fourteen years.`,
+ where:`Gusev crater (Spirit) and Meridiani Planum (Opportunity), Mars`,
+ spans:[{l:'Spirit',a:'2004-01-03',b:'2010-03-22',p:92.5,pt:'90 sols ≈ 92.5 days'},{l:'Opportunity',a:'2004-01-24',b:'2018-06-10',p:92.5,pt:'90 sols ≈ 92.5 days'}],
+ purpose:`Look in the rocks for signs that water once existed on Mars, driving from site to site. The original plan was about 90 Martian days (sols).`,
+ story:[`Spirit landed on 3 January 2004 and Opportunity on 24 January 2004. Spirit drove 7.7 km before getting stuck in sand on 1 May 2009. It became a stationary platform on 26 January 2010 and last made contact on 22 March 2010, in winter. NASA ended its recovery attempts on 25 May 2011.`,
+  `Opportunity drove 45.16 km. Its last contact was on 10 June 2018, during a global dust storm. On 11 October 2026, Perseverance passed its distance record (45.22 km).`],
+ tech:[`Solar-powered rovers, so dependent on light and dust.`,`Airbag landing inherited from Pathfinder.`,`Odometers: Opportunity 45.16 km, Spirit 7.7 km.`],
+ stop:`Spirit, stuck in sand, could not tilt itself toward the Sun for the winter and went silent in March 2010. Opportunity lost its solar power in the darkness of a global dust storm in June 2018.`,
+ facts:[['Spirit','7.7 km · 6.2 years'],['Opportunity','45.16 km · 14.4 years'],['Planned','≈ 90 sols']],
+ rel:[['pathfinder',`The airbags come from Pathfinder.`],['insight',`Dust on solar panels, again.`]]},
+
+{id:'insight',name:'InSight',place:'mars',launch:'2018-05-05',start:'2018-11-26',end:'2022-12-15',cause:'energy',
+ tagline:`A seismologist on Mars, smothered by dust.`,
+ where:`Elysium Planitia, Mars (4.5°N, 135.9°E)`,
+ spans:[{l:'InSight',a:'2018-11-26',b:'2022-12-15',p:687,pt:'1 Martian year ≈ 687 days (to confirm)'}],
+ purpose:`Study the interior of Mars (crust, mantle, core) by listening to marsquakes, and measure the heat flowing out of it.`,
+ story:[`Launched on 5 May 2018 on an Atlas V from Vandenberg, it landed on 26 November 2018, about 600 km from Curiosity. Two MarCO CubeSats flew along with it.`,
+  `It recorded more than 1,300 marsquakes. Dust built up on its panels: by May 2022 it received only about a tenth of its original power. Shaking the panels with the arm and dropping soil beside them to let the wind carry the dust away did not help, and no dust devil passed close enough. The end of the mission was announced on 21 December 2022 (last contact 15 December).`],
+ tech:[`A 1.8 m arm to place instruments on the ground.`,`A platform built on Phoenix's design.`,`Solar power only, no nuclear generator.`],
+ stop:`Dust slowly starved the lander of power. Figures for its power vary by source (5,000 versus 10,000 Wh per sol at the start).`,
+ facts:[['Marsquakes','1,300+'],['Arm','1.8 m'],['Power in 2022','≈ 1/10']],
+ rel:[['mer',`The same enemy: dust on solar panels.`],['viking1',`It succeeded where Viking's seismometer had failed.`]]},
+
+{id:'ingenuity',name:'Ingenuity',place:'mars',launch:'2020-07-30',start:'2021-02-18',end:'2024-01-25',cause:'fail',
+ tagline:`A 1.8 kg helicopter meant to fly five times that flew 72.`,
+ where:`Jezero crater, Mars`,
+ spans:[{l:'Ingenuity',a:'2021-02-18',b:'2024-01-25',p:30,pt:'30 days'}],
+ purpose:`Prove that a powered aircraft can fly in the very thin air of Mars. It was a technology demonstration: 5 flights in 30 days.`,
+ story:[`It arrived with Perseverance on 18 February 2021 and made its first flight on 19 April 2021. The demonstration was complete on 7 May 2021, and from 24 July 2021 it became a scout.`,
+  `It set records for distance (8 April 2022), altitude (5 October 2023) and speed (12 October 2023). On flight 72, on 18 January 2024, contact was lost at 1 m above the ground. A rotor blade had lost about a quarter of its tip. The mission was declared over on 25 January 2024.`],
+ tech:[`1.8 kg, two counter-rotating rotors.`,`It carries a small swatch of fabric from the Wright Flyer.`,`Records: 24 m altitude, 10 m/s, 17 km in total.`],
+ stop:`Rotor damage during the 72nd landing. The craft could no longer fly. A conceptual successor, SkyFall, is being developed.`,
+ facts:[['Flights','72'],['Time aloft','128.8 min'],['Distance','17 km'],['Planned','5 flights']],
+ rel:[['mer',`Perseverance, its neighbour on Mars, has just beaten Opportunity's distance record.`]]},
+
+{id:'kepler',name:'Kepler / K2',place:'space',launch:'2009-03-06',start:'2009-03-06',end:'2018-10-30',cause:'fuel',
+ tagline:`A telescope that counted planets, then ran out of fuel.`,
+ where:`Orbit around the Sun`,
+ spans:[{l:'Kepler',a:'2009-03-06',b:'2018-10-30',p:1278,pt:'3.5 years'}],
+ purpose:`Find out how many Earth-sized planets exist around other stars by detecting the tiny dips in light when a planet crosses in front of its star (the transit method).`,
+ story:[`Launched on 6 March 2009, Kepler watched 150,000 stars in the constellation Cygnus with a 1.4 m mirror.`,
+  `In May 2013 a second reaction wheel failed. The team invented the K2 mission: the craft balanced itself using the pressure of sunlight and ran 19 observing campaigns. In all, more than 2,600 planets. It was retired on 30 October 2018 for lack of fuel, in an orbit around the Sun.`],
+ tech:[`A 1.4 m mirror and a huge camera sensor.`,`The transit method.`,`Pointing finally held by solar radiation pressure.`],
+ stop:`The tank was empty. The announcement came two days before the end of Dawn, which stopped for the same reason.`,
+ facts:[['Planets','2,600+'],['Stars','150,000'],['K2 campaigns','19']],
+ rel:[['dawn',`Same cause of death, two days apart.`],['near',`Three missions of the Discovery program.`]]},
+
+{id:'dawn',name:'Dawn',place:'space',launch:'2007-09-27',start:'2007-09-27',end:'2018-11-01',cause:'fuel',
+ tagline:`The first probe to orbit two different worlds.`,
+ where:`Orbit around Ceres, asteroid belt`,
+ spans:[{l:'Dawn',a:'2007-09-27',b:'2018-11-01',p:null}],
+ purpose:`Compare two large bodies of the asteroid belt, Vesta and Ceres, relics of the early Solar System.`,
+ story:[`Launched on 27 September 2007, Dawn left Vesta in September 2012 and entered orbit around Ceres in March 2015. In June 2018 it dropped to about 35 km altitude.`,
+  `It missed two radio contacts, on 31 October and 1 November 2018, and NASA announced the end of the mission on 1 November 2018. It will stay in orbit for more than 50 years (over 99% likely), in line with planetary protection rules.`],
+ tech:[`Ion propulsion.`,`Hydrazine for attitude control.`,`“First to orbit two extraterrestrial bodies.”`],
+ stop:`There was no hydrazine left to point the antenna at Earth and the panels at the Sun.`,
+ facts:[['Final altitude','≈ 35 km'],['Stays in orbit','50+ years'],['Lifespan','11 years']],
+ rel:[['kepler',`Same cause of death, two days apart.`],['near',`Another small-body visit, in orbit.`]]},
+
+{id:'near',name:'NEAR Shoemaker',place:'space',launch:'1996-02-17',start:'1996-02-17',end:'2001-02-28',cause:'energy',
+ tagline:`A probe that ended up landing on an asteroid it was never designed to touch.`,
+ where:`Asteroid Eros (Himeros region)`,
+ spans:[{l:'NEAR Shoemaker',a:'1996-02-17',b:'2001-02-28',p:null}],
+ purpose:`Study a near-Earth asteroid, Eros, from orbit. It was the first mission of the Discovery program, designed to be fast and inexpensive.`,
+ story:[`Launched on 17 February 1996, NEAR flew past Mathilde (27 June 1997) and then Earth (23 January 1998). A burn was aborted on 20 December 1998, so it only flew past Eros on 23 December. It entered orbit on 14 February 2000 and was renamed Shoemaker on 14 March 2000.`,
+  `On 12 February 2001 it landed at about 6.4 km/h in the Himeros region. It kept working until 28 February 2001. A listening attempt on 10 December 2002 failed.`],
+ tech:[`805 kg, 160,000 images.`,`Spectrometers and a camera to map Eros.`],
+ stop:`The night and the cold (−173 °C) finally silenced it. The landing was only a bonus: the mission was already complete.`,
+ facts:[['Images','160,000'],['Mass','805 kg'],['Landing speed','6.4 km/h']],
+ rel:[['dawn',`Same idea: visiting a small body, in orbit.`],['kepler',`Discovery program.`]]},
+
+{id:'pioneer10',name:'Pioneer 10',place:'space',launch:'1972-03-02',start:'1972-03-02',end:'2003-01-23',cause:'budget',
+ tagline:`The first visitor to Jupiter, leaving the Solar System for fifty years.`,
+ where:`Interstellar space, heading toward Aldebaran`,
+ spans:[{l:'Pioneer 10',a:'1972-03-02',b:'2003-01-23',p:639,pt:'21 months'}],
+ purpose:`Open the road: cross the asteroid belt and pass close to Jupiter, a planet no spacecraft had visited before.`,
+ story:[`Launched on 2 March 1972, it passed closest to Jupiter on 4 December 1973, at 130,354 km. It crossed Neptune's orbit on 13 June 1983, and Voyager 1 overtook it in distance on 17 February 1998.`,
+  `Routine contact ended on 31 March 1997 for budget reasons. Last telemetry on 27 April 2002, last signal on 23 January 2003 (12.23 billion km, 11 h 20 of light travel). A final attempt on 4 March 2006 got no answer.`],
+ tech:[`Two SNAP-19 isotope generators (about 140 W).`,`11 instruments.`,`A plaque showing 14 pulsars to locate the Sun.`,`Its third-stage motor derives from Surveyor's.`],
+ stop:`Daily tracking was cut in 1997 to save money, then the nuclear power declined until the signal was too weak to receive.`,
+ facts:[['Distance (Nov 2017)','≈ 118.8 AU'],['Lifespan','30.9 years'],['Planned','21 months']],
+ rel:[['surveyor3',`Same third-stage motor.`]]}
+];
+const CAPS={
+ surveyor3:['An Apollo 12 astronaut examining Surveyor 3, with the lunar module Intrepid on the horizon.','40% 70%'],
+ apollo11:['The lunar module Eagle on the Moon, with an astronaut at the equipment bay.','50% 30%'],
+ apollo12:['An Apollo 12 lunar module on the surface, with an astronaut at work beside it.','50% 40%'],
+ apollo15:['An Apollo command and service module in lunar orbit.','50% 50%'],
+ viking1:['Labelled diagram of a Viking orbiter.','50% 50%'],
+ pathfinder:['The Sojourner rover near the Pathfinder lander, with a deflated airbag in the foreground.','50% 35%'],
+ mer:['NASA infographic: Spirit and Opportunity by the numbers (updated 4 February 2019).','50% 55%'],
+ insight:['Engineers working on InSight before launch, its two solar panels unfolded.','45% 55%'],
+ ingenuity:['Ingenuity on the surface of Mars.','50% 55%'],
+ kepler:['Artist\'s concept of the Kepler spacecraft and its field of view.','50% 50%'],
+ dawn:['Artist\'s concept of Dawn at Ceres, its ion engine glowing.','60% 50%'],
+ near:['Artist\'s concept of NEAR Shoemaker at Eros.','50% 50%'],
+ pioneer10:['Artist\'s concept of Pioneer 10 at Jupiter.','65% 50%']
+};
+M.forEach(m=>{m.cap=CAPS[m.id][0];m.pos=CAPS[m.id][1]});
+const byId=Object.fromEntries(M.map(m=>[m.id,m]));
+const THREADS=[
+ {t:'Nuclear generators',d:`Craft far from the Sun, or needing to survive the nights, used plutonium-238: ALSEP, Viking, Pioneer 10.`,m:['apollo12','apollo15','viking1','pioneer10']},
+ {t:'Dust, the enemy of solar panels',d:`Surveyor, Opportunity and InSight relied on the Sun and died when the light ran short.`,m:['surveyor3','mer','insight']},
+ {t:'Running dry',d:`Kepler and Dawn ended two days apart, with empty tanks.`,m:['kepler','dawn']},
+ {t:'Built to last briefly, they lasted long',d:`Real lifespans 18 to 57 times the plan: Pioneer 10, Viking 1, Ingenuity, Opportunity.`,m:['pioneer10','viking1','ingenuity','mer']},
+ {t:'One shutdown day',d:`Both ALSEP stations (Apollo 12 and 15) were switched off on the same day, 30 September 1977.`,m:['apollo12','apollo15']}
+];
+const REL=[
+ ['surveyor3','apollo12',`180 m apart: Apollo 12 brought back the scoop and camera.`],
+ ['surveyor3','pioneer10',`Pioneer 10's third-stage motor derives from Surveyor's.`],
+ ['apollo11','apollo12',`EASEP prepares the fuller ALSEP.`],
+ ['apollo12','apollo15',`ALSEP networks switched off the same day.`],
+ ['pathfinder','mer',`The landing airbags.`],
+ ['mer','insight',`Dust on solar panels.`],
+ ['viking1','insight',`A failed seismometer versus 1,300 recorded quakes.`],
+ ['kepler','dawn',`Ends two days apart, same cause.`],
+ ['near','dawn',`Visiting a small body, in orbit.`]
+];
+const SOURCES=[
+ ['NSSDC (home)','https://nssdc.gsfc.nasa.gov/'],
+ ['Apollo 11 (1969-059C)','https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C'],
+ ['Apollo 15 (1971-063C)','https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1971-063C'],
+ ['Apollo 12 (1969-099C)','https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099C'],
+ ['Surveyor 3','https://science.nasa.gov/mission/surveyor-3/'],
+ ['Mars Pathfinder','https://science.nasa.gov/mission/mars-pathfinder/'],
+ ['Spirit and Opportunity','https://science.nasa.gov/mission/mars-exploration-rovers-spirit-and-opportunity/'],
+ ['Viking 1','https://science.nasa.gov/mission/viking-1/'],
+ ['InSight','https://science.nasa.gov/mission/insight/'],
+ ['Dawn','https://science.nasa.gov/mission/dawn/'],
+ ['NEAR Shoemaker','https://science.nasa.gov/mission/near-shoemaker/'],
+ ['Pioneer 10','https://science.nasa.gov/mission/pioneer-10/'],
+ ['Ingenuity','https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/'],
+ ['Kepler','https://science.nasa.gov/mission/kepler/']
+];
+const CONFIRM=[
+ `Apollo 12 landing date: 19 November (UT) on the NSSDC page, 18 November on the Surveyor 3 page.`,
+ `End of Pathfinder, EASEP and the ALSEP stations: the pages give no cause.`,
+ `Launch dates of Spirit and Opportunity and Dawn's arrival at Ceres: general knowledge, not taken from the pages.`,
+ `Planned durations for Apollo 12/15 (≈ 1 year), Viking 1 (90 days), Pathfinder (30 days) and InSight (1 Martian year): secondary sources or general knowledge.`,
+ `InSight's remaining power: sources disagree (5,000 versus 10,000 Wh per sol).`,
+ `End of Dawn: 31 October or 1 November 2018, depending on how the missed contact is counted.`,
+ `Pioneer 10 distance: a November 2017 figure.`,
+ `NASA describes these missions as “completed” or “successful”, not “abandoned”.`
+];
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const fmtD=s=>new Date(s+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+const days=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/864e5);
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const yrs=d=>{const y=d/365.25;return y<1?`${nf(d)} days`:`${y.toFixed(1)} years`};
+const life=m=>days(m.start,m.end);
+let READ=[];
+try{READ=JSON.parse(localStorage.getItem('nasa-read')||'[]')}catch(e){}
+const saveRead=()=>{try{localStorage.setItem('nasa-read',JSON.stringify(READ))}catch(e){}};
+const badge=c=>`<span class="badge" style="--c:${CAUSES[c].c}"><span class="dot"></span>${CAUSES[c].t}</span>`;
+const link=id=>`<a href="#m-${id}">${byId[id].name}</a>`;
+let fPlace='all',fCause='all';
+
+/* ---------- views ---------- */
+function vContents(){
+  const tot=M.reduce((s,m)=>s+life(m),0);
+  return `<section class="hero">
+    <div class="eyebrow">13 missions · 1967 to 2024</div>
+    <h1>SpaceHistory</h1>
+    <p class="lead">Thirteen NASA spacecraft that stopped transmitting. For each one: why it was built, how it worked, what ended it, where it rests and how long it lasted.</p>
+    <div class="stats"><span><b>${READ.length}</b> / 13 pages read</span><span><b>${nf(tot/365.25)}</b> combined years of service</span><span>Open a card to read its page</span></div>
+    <div><a class="btn" style="text-decoration:none;display:inline-block" href="#book">Read as a flipbook →</a></div>
+  </section>
+  <div class="filters">
+    <div class="chips" role="group" aria-label="Place">${[['all','All places'],...Object.entries(PLACES)].map(([k,v])=>`<button class="chip" data-f="place" data-k="${k}" aria-pressed="${fPlace===k}">${v}</button>`).join('')}</div>
+    <div class="chips" role="group" aria-label="Cause of end"><button class="chip" data-f="cause" data-k="all" aria-pressed="${fCause==='all'}">All causes</button>${Object.entries(CAUSES).map(([k,v])=>`<button class="chip" data-f="cause" data-k="${k}" aria-pressed="${fCause===k}" style="--c:${v.c}"><span class="dot"></span>${v.t}</button>`).join('')}</div>
+  </div>
+  <ul class="grid" id="grid">${gridHtml()}</ul>`;
+}
+function gridHtml(){
+  const l=M.filter(m=>(fPlace==='all'||m.place===fPlace)&&(fCause==='all'||m.cause===fCause));
+  if(!l.length)return `<li>No mission matches this filter.</li>`;
+  return l.map(m=>`<li><a class="card" href="#m-${m.id}">
+    <div class="ph"><img src="img/${m.id}.jpg" alt="${m.cap}" style="object-position:${m.pos}" loading="lazy"></div>
+    <div class="in">
+    <div class="meta"><span>${PLACES[m.place]}</span><span>${m.launch.slice(0,4)} → ${m.end.slice(0,4)}</span></div>
+    <h3>${m.name}</h3><p>${m.tagline}</p>
+    ${badge(m.cause)}
+    <div class="foot"><span>${yrs(life(m))}</span><span class="read">${READ.includes(m.id)?'read ✓':'open →'}</span></div></div></a></li>`).join('');
+}
+function vPage(id){
+  const m=byId[id];if(!m)return vContents();
+  const i=M.indexOf(m),prev=M[i-1],next=M[i+1],d=life(m);
+  const plan=m.spans.filter(x=>x.p);
+  const read=READ.includes(id);
+  return `<a class="back" href="#contents">← Contents</a>
+  <header class="fiche-head">
+    <div class="txt"><div class="eyebrow">${PLACES[m.place]} · page ${i+1} of ${M.length}</div>
+    <h1>${m.name}</h1><p class="lead" style="margin:0">${m.tagline}</p>
+    <div>${badge(m.cause)}</div></div>
+    <figure class="figure"><img src="img/${m.id}.jpg" alt="${m.cap}"><figcaption>${m.cap} Image: NASA.</figcaption></figure>
+  </header>
+  <dl class="vitals">
+    <div><dt>Launch</dt><dd>${fmtD(m.launch)}</dd></div>
+    <div><dt>In service</dt><dd>${fmtD(m.start)}</dd></div>
+    <div><dt>Last contact</dt><dd>${fmtD(m.end)}</dd></div>
+    <div><dt>Where</dt><dd>${m.where}</dd></div>
+    <div><dt>Lifespan</dt><dd>${d<365?nf(d)+' days':nf(d)+' days · '+yrs(d)}</dd></div>
+  </dl>
+  <div class="cols">
+    <article class="prose">
+      <h3>Why it was built</h3><p>${m.purpose}</p>
+      <h3>History</h3>${m.story.map(p=>`<p>${p}</p>`).join('')}
+      <h3>Technology</h3><ul>${m.tech.map(t=>`<li>${t}</li>`).join('')}</ul>
+      <h3>Why it stopped</h3><p>${m.stop}</p>
+      ${plan.length?`<p class="note">Planned: ${plan.map(x=>`${x.l} ${x.pt}`).join('; ')}. See the <a href="#lifespans">Lifespans</a> plate.</p>`:''}
+    </article>
+    <aside class="aside">
+      <figure class="figure"><div class="il">${ILL[m.id]()}</div><figcaption>AI-generated schematic, simplified, not to scale.</figcaption></figure>
+      <div class="box"><h3>Key figures</h3><dl class="kv">${m.facts.map(c=>`<div><dt>${c[0]}</dt><dd>${c[1]}</dd></div>`).join('')}</dl></div>
+      <div class="box"><h3>Links to other craft</h3><ul class="links">${m.rel.map(([k,w])=>`<li><a href="#m-${k}">${byId[k].name}</a><span>${w}</span></li>`).join('')}</ul></div>
+      ${MODEL_FOR[id]?`<a class="btn" style="text-align:center;text-decoration:none" href="#model-${MODEL_FOR[id]}">Explore the 3D model →</a>`:''}
+      <button class="btn${read?'':' ghost'}" id="readbtn" aria-pressed="${read}">${read?'Marked as read ✓':'Mark as read'}</button>
+    </aside>
+  </div>
+  <div class="pager">${prev?`<a href="#m-${prev.id}">← ${prev.name}</a>`:'<span></span>'}${next?`<a href="#m-${next.id}" style="text-align:right">${next.name} →</a>`:'<span></span>'}</div>`;
+}
+function vLifespans(){
+  const rows=[];
+  M.forEach(m=>m.spans.forEach(x=>{if(x.p)rows.push({m,x,a:days(x.a,x.b)})}));
+  const hi=Math.log10(20000)-1;
+  const pos=v=>(Math.log10(v)-1)/hi*100;
+  const ticks=[10,100,1000,10000];
+  const axis=`<div class="axis" aria-hidden="true">${ticks.map(t=>`<span style="left:${pos(t)}%">${nf(t)} d</span>`).join('')}</div>`;
+  const body=rows.sort((a,b)=>b.a/b.x.p-a.a/a.x.p).map(({m,x,a})=>{
+    const l=Math.min(pos(x.p),pos(a)),r=Math.max(pos(x.p),pos(a));
+    const k=a/x.p;
+    return `<a class="crow" href="#m-${m.id}" style="--c:${CAUSES[m.cause].c}">
+      <div class="cl">${x.l}<small>${k.toFixed(k<10?1:0)}× the plan</small></div>
+      <div class="ctrack">${ticks.map(t=>`<i class="tick" style="left:${pos(t)}%"></i>`).join('')}<i class="cline" style="left:${l}%;width:${r-l}%"></i><i class="cp" style="left:${pos(x.p)}%"></i><i class="cr" style="left:${pos(a)}%"></i></div>
+      <div class="cval">planned ${x.pt} → actual ${nf(a)} days (${yrs(a)})</div></a>`}).join('');
+  return `<a class="back" href="#contents">← Contents</a>
+  <section class="section" style="margin-top:1rem"><div class="eyebrow">Plate 1</div><h1 class="pg-title">Planned versus actual</h1>
+  <p class="lead">Every craft with a known plan outlived it. The scale is logarithmic: each tick is ten times the previous one.</p>
+  <div class="chart"><div class="legend"><span><i class="lg-plan"></i>Planned lifespan</span><span><i class="lg-real"></i>Actual lifespan</span><span>Colour: cause of end</span></div>
+  ${axis}${body}</div>
+  <p class="note">Plans marked “to confirm” come from secondary sources or general knowledge. Pioneer 10: 21 months planned; Kepler: 3.5 years; Spirit and Opportunity: about 90 sols.</p></section>`;
+}
+function vTimeline(){
+  const t0=Date.parse('1966-01-01'),t1=Date.parse('2026-01-01'),p=d=>(Date.parse(d)-t0)/(t1-t0)*100;
+  const ys=[1970,1980,1990,2000,2010,2020];
+  const axis=`<div class="gaxis" aria-hidden="true">${ys.map(y=>`<span style="left:${p(y+'-01-01')}%">${y}</span>`).join('')}</div>`;
+  const rows=[...M].sort((a,b)=>a.launch.localeCompare(b.launch)).map(m=>`<a class="grow" href="#m-${m.id}" style="--c:${CAUSES[m.cause].c}" title="${m.name}: ${fmtD(m.launch)} → ${fmtD(m.end)}">
+    <div class="cl">${m.name}<small>${m.launch.slice(0,4)} → ${m.end.slice(0,4)}</small></div>
+    <div class="gtrack">${ys.map(y=>`<i class="gvl" style="left:${p(y+'-01-01')}%"></i>`).join('')}<i class="gbar" style="left:${p(m.launch)}%;width:${p(m.end)-p(m.launch)}%"></i></div></a>`).join('');
+  return `<a class="back" href="#contents">← Contents</a>
+  <section class="section" style="margin-top:1rem"><div class="eyebrow">Plate 2</div><h1 class="pg-title">Fifty-seven years of silences</h1>
+  <p class="lead">From the launch of Surveyor 3 in 1967 to the end of Ingenuity in 2024. Each bar runs from launch to last contact.</p>
+  <div class="legend" style="margin-top:1rem">${Object.values(CAUSES).map(c=>`<span><i style="background:${c.c}"></i>${c.t}</span>`).join('')}</div>
+  ${axis}${rows}</section>`;
+}
+function vLinks(){
+  return `<a class="back" href="#contents">← Contents</a>
+  <section class="section" style="margin-top:1rem"><div class="eyebrow">Plate 3</div><h1 class="pg-title">What connects them</h1>
+  <p class="lead">Technical lineages, stories that cross and a few shared causes.</p>
+  <h2 style="margin-top:2.5rem">Common threads</h2>
+  <div class="themes">${THREADS.map(f=>`<div class="box"><h3>${f.t}</h3><p style="margin:.3rem 0 0;color:var(--muted)">${f.d}</p><div class="chips">${f.m.map(k=>`<a class="chip" href="#m-${k}">${byId[k].name}</a>`).join('')}</div></div>`).join('')}</div>
+  <h2 style="margin-top:2.5rem">Lineages</h2>
+  <div class="rel">${REL.map(([a,b,w])=>`<div class="box"><div>${link(a)} <span class="arrow">↔</span> ${link(b)}</div><p style="margin:.4rem 0 0;color:var(--muted);font-size:.95rem">${w}</p></div>`).join('')}</div></section>`;
+}
+function vSources(){
+  return `<a class="back" href="#contents">← Contents</a>
+  <section class="section" style="margin-top:1rem"><div class="eyebrow">References</div><h1 class="pg-title">Sources</h1>
+  <h2 style="margin-top:2rem;font-size:1.6rem">NASA pages consulted</h2>
+  <ol class="src">${SOURCES.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${t}</a></li>`).join('')}</ol>
+</section>`;
+}
+
+/* ---------- 3D models: a small canvas renderer (no libraries) ---------- */
+const PAL={body:'#B9C3CE',metal:'#8F9BA8',dark:'#3A4551',panel:'#2E5AA7',cell:'#1F3F7A',gold:'#C9A43A',white:'#E7ECF1',ice:'#58B8FF',copper:'#B4703C',carbon:'#5B6673'};
+const v3={add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],scl:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],
+  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],len:a=>Math.hypot(a[0],a[1],a[2]),
+  norm(a){const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l]}};
+const quads=(qs,col)=>{const t=[];qs.forEach(q=>{t.push([q[0],q[1],q[2],col],[q[0],q[2],q[3],col])});return t};
+function box(w,h,d,c,col){const [x,y,z]=c,hx=w/2,hy=h/2,hz=d/2;
+  const p=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].map(([a,b,e])=>[x+a*hx,y+b*hy,z+e*hz]);
+  return quads([[0,1,2,3],[5,4,7,6],[4,0,3,7],[1,5,6,2],[3,2,6,7],[4,5,1,0]].map(f=>f.map(i=>p[i])),col)}
+function cyl(a,b,ra,rb,n,col,caps){const k=v3.norm(v3.sub(b,a)),ref=Math.abs(k[1])<.9?[0,1,0]:[1,0,0],u=v3.norm(v3.cross(k,ref)),v=v3.cross(k,u);
+  const ring=(c,r,i)=>{const t=i/n*Math.PI*2;return v3.add(c,v3.add(v3.scl(u,Math.cos(t)*r),v3.scl(v,Math.sin(t)*r)))};
+  const out=[];for(let i=0;i<n;i++){const A=ring(a,ra,i),B=ring(a,ra,i+1),C=ring(b,rb,i+1),D=ring(b,rb,i);
+    out.push([A,B,C,col],[A,C,D,col]);if(caps!==false){out.push([a,B,A,col],[b,D,C,col])}}return out}
+function dish(r,depth,n,rings,col){const P=(i,j)=>{const rho=r*i/rings,t=j/n*Math.PI*2;return [rho*Math.cos(t),depth*(i/rings)*(i/rings),rho*Math.sin(t)]};
+  const out=[];for(let i=0;i<rings;i++)for(let j=0;j<n;j++){out.push([P(i,j),P(i+1,j),P(i+1,j+1),col],[P(i,j),P(i+1,j+1),P(i,j+1),col])}return out}
+function dome(r,c,lat,lon,col){const P=(i,j)=>{const ph=i/lat*Math.PI/2,t=j/lon*Math.PI*2;return [c[0]+r*Math.sin(ph)*Math.cos(t),c[1]+r*Math.cos(ph),c[2]+r*Math.sin(ph)*Math.sin(t)]};
+  const out=[];for(let i=0;i<lat;i++)for(let j=0;j<lon;j++){out.push([P(i,j),P(i+1,j),P(i+1,j+1),col],[P(i,j),P(i+1,j+1),P(i,j+1),col])}return out}
+const mv=(tris,d)=>tris.map(t=>[v3.add(t[0],d),v3.add(t[1],d),v3.add(t[2],d),t[3]]);
+function rot(tris,r,pv){pv=pv||[0,0,0];const [rx,ry,rz]=r.map(x=>x*Math.PI/180);
+  const f=p=>{let [x,y,z]=v3.sub(p,pv);let t=y*Math.cos(rx)-z*Math.sin(rx);z=y*Math.sin(rx)+z*Math.cos(rx);y=t;
+    t=x*Math.cos(ry)+z*Math.sin(ry);z=-x*Math.sin(ry)+z*Math.cos(ry);x=t;
+    t=x*Math.cos(rz)-y*Math.sin(rz);y=x*Math.sin(rz)+y*Math.cos(rz);x=t;return v3.add([x,y,z],pv)};
+  return tris.map(t=>[f(t[0]),f(t[1]),f(t[2]),t[3]])}
+const cat=(...a)=>[].concat(...a);
+const part=(id,label,color,text,ex,tris,o)=>Object.assign({id,label,color,text,ex:ex||[0,0,0],tris},o||{});
+const polar=(r,deg,y)=>[r*Math.cos(deg*Math.PI/180),y,r*Math.sin(deg*Math.PI/180)];
+
+function mIngenuity(){
+  const legs=[];[[1,1],[-1,1],[1,-1],[-1,-1]].forEach(([sx,sz])=>{
+    legs.push(...cyl([sx*.06,.2,sz*.06],[sx*.2,.014,sz*.2],.007,.007,6,PAL.dark),...cyl([sx*.2,.014,sz*.2],[sx*.2,0,sz*.2],.024,.024,8,PAL.dark))});
+  return {title:'Ingenuity',link:'ingenuity',cam:[.7,.3],
+   summary:'The 1.8 kg Mars helicopter, built to prove that powered flight works in the thin Martian air. It flew 72 times before a rotor blade was damaged.',
+   facts:[['Mass','1.8 kg'],['Flights','72'],['Time aloft','128.8 min'],['Rotor span','≈ 1.2 m']],
+   note:'Rotor span and spin are approximate; rotors are shown spinning slower than the real ones.',spin:true,
+   parts:[
+    part('rotor-up','Upper rotor',PAL.carbon,'Two counter-rotating rotors give lift without needing a tail rotor. On flight 72, on 18 January 2024, a blade lost roughly a quarter of its tip. Contact was lost 1 m above the ground and the mission ended a week later.',[0,.4,0],
+      rot(box(1.2,.004,.07,[0,.455,0],PAL.carbon),[0,60,0]),{spin:{rate:-7,pivot:[0,0,0]}}),
+    part('rotor-low','Lower rotor',PAL.carbon,'Counter-rotating partner of the upper rotor. Martian air is about one percent as dense as Earth\'s, so the blades are large and spin fast.',[0,.22,0],
+      box(1.2,.004,.07,[0,.41,0],PAL.carbon),{spin:{rate:7,pivot:[0,0,0]}}),
+    part('panel','Solar panel',PAL.cell,'A small solar panel on top recharges the batteries each sol, so the helicopter can fly without a power line to the rover.',[0,.65,0],
+      rot(box(.42,.01,.24,[0,.53,0],PAL.cell),[-12,0,0])),
+    part('mast','Mast and hubs',PAL.metal,'The mast lifts the rotors high above the body and carries them on their hubs.',[0,.12,0],
+      cyl([0,.36,0],[0,.52,0],.012,.012,8,PAL.metal)),
+    part('body','Fuselage',PAL.gold,'The insulated box holds the batteries, computer and heaters. It must stay warm through cold Martian nights.',[0,0,0],
+      box(.14,.18,.16,[0,.29,0],PAL.gold)),
+    part('cam','Navigation camera',PAL.dark,'A downward-facing camera tracks features on the ground so the helicopter knows how it is moving while it flies on its own.',[0,-.16,0],
+      box(.045,.03,.045,[0,.185,.05],PAL.dark)),
+    part('legs','Landing legs',PAL.dark,'Four spindly legs absorb the touchdown. Ingenuity was designed for 5 flights in 30 days and flew for nearly three years.',[0,-.14,0],legs)
+   ]}}
+
+function mPioneer(){
+  const rim=a=>polar(1.37,a,0).map((v,i)=>i===1?v:v);
+  const struts=[];[90,210,330].forEach(a=>{const r=[1.37*Math.cos(a*Math.PI/180),1.37*Math.sin(a*Math.PI/180),.45];struts.push(...cyl(r,[0,0,1],.016,.016,5,PAL.metal))});
+  const A=[.35,0,-.2],Ba=[2.3,.9,-.6],Bb=[2.3,-.9,-.6],P=(a,b,t)=>v3.add(a,v3.scl(v3.sub(b,a),t));
+  const rtg=[];[Ba,Bb].forEach(e=>{rtg.push(...cyl(A,e,.022,.022,6,PAL.metal),...cyl(P(A,e,.5),P(A,e,.73),.1,.1,10,PAL.copper),...cyl(P(A,e,.77),P(A,e,1),.1,.1,10,PAL.copper))});
+  return {title:'Pioneer 10',link:'pioneer10',cam:[.7,.25],
+   summary:'The first craft to cross the asteroid belt and visit Jupiter. Its last signal came on 23 January 2003, from 12.23 billion km away.',
+   facts:[['Launch','2 March 1972'],['Jupiter flyby','4 Dec 1973'],['Last signal','23 Jan 2003'],['Instruments','11']],
+   note:'The magnetometer boom is drawn shortened. Sources differ on the number of generators: the NASA page lists two SNAP-19 units, other references four on two booms.',
+   parts:[
+    part('dish','High-gain dish',PAL.white,'The 2.7 m dish, about the size of a small room\'s ceiling, kept the craft pointed at Earth. The whole spacecraft spun slowly to stay stable.',[0,0,.5],rot(dish(1.37,.45,28,6,PAL.white),[90,0,0])),
+    part('feed','Antenna feed',PAL.metal,'The feed horn sits at the focus of the dish and sends and receives the radio signal.',[0,0,1.3],cat(struts,cyl([0,0,.95],[0,0,1.14],.07,.02,10,PAL.metal))),
+    part('bus','Equipment compartment',PAL.gold,'A hexagonal housing behind the dish that holds the electronics and the instruments, among them the 11 experiments that studied Jupiter\'s radiation and magnetic field.',[0,0,-.7],cyl([0,0,-.4],[0,0,0],.45,.45,6,PAL.gold)),
+    part('rtg','Nuclear generators',PAL.copper,'Plutonium-238 generators (SNAP-19), about 140 W according to the NASA page, kept far out on booms. Too far from the Sun for solar panels, Pioneer 10 relied on them for 30 years until its signal was too weak to hear.',[.9,0,-.4],rtg),
+    part('mag','Magnetometer boom',PAL.gold,'A long boom holds the magnetometer away from the electronics so that it measures space, not the spacecraft.',[-1,0,-.4],cat(cyl([-.3,0,-.2],[-3,-.3,-1.2],.016,.016,6,PAL.gold),box(.12,.12,.12,[-3,-.3,-1.2],PAL.dark))),
+    part('plaque','Pioneer plaque',PAL.gold,'A gold-anodised plaque shows a man and a woman and a map of 14 pulsars that locates the Sun. Pioneer 10 is heading toward the star Aldebaran.',[-.5,-.8,.8],rot(box(.23,.15,.012,[-.5,-.3,.76],PAL.gold),[0,12,0]))
+   ]}}
+
+function mInsight(){
+  const legs=[];[30,150,270].forEach(a=>{const t=polar(.65,a,.88),f=polar(1.25,a,.03);legs.push(...cyl(t,f,.035,.035,6,PAL.metal),...cyl([f[0],.045,f[2]],[f[0],0,f[2]],.14,.16,10,PAL.metal))});
+  const arr=sx=>{const cx=sx*1.9,out=cyl([cx,.955,0],[cx,.985,0],1.05,1.05,14,PAL.cell);
+    for(let k=0;k<7;k++){const a=k/7*Math.PI*2;out.push(...cyl([cx,.99,0],[cx+1.05*Math.cos(a),.99,1.05*Math.sin(a)],.009,.009,4,PAL.gold))}
+    out.push(...cyl([sx*.75,.9,0],[sx*.86,.96,0],.025,.025,6,PAL.metal));return out};
+  const arrText='Two round solar arrays supplied all of InSight\'s power. Dust built up on them: by May 2022 only about a tenth of the original power arrived. Shaking the panels with the arm and dropping soil beside them for the wind to carry off the dust did not help.';
+  return {title:'InSight',link:'insight',cam:[.6,.35],
+   summary:'A lander built to listen to the inside of Mars. It recorded more than 1,300 marsquakes before dust on its solar panels ended the mission on 15 December 2022.',
+   facts:[['Landing','26 Nov 2018'],['Marsquakes','1,300+'],['Arm','1.8 m'],['Power, 2022','≈ 1/10']],
+   note:'Array size and instrument positions are approximate.',
+   parts:[
+    part('deck','Lander deck',PAL.dark,'The platform carries the electronics, antennas and the instruments before they are placed on the ground. It is built on the design of the Phoenix lander.',[0,.1,0],cat(cyl([0,.85,0],[0,.93,0],.75,.75,8,PAL.dark),box(.4,.25,.4,[0,1.06,-.12],PAL.copper),box(.3,.2,.3,[-.38,1.03,.1],PAL.metal),box(.22,.16,.22,[.38,1.0,-.2],PAL.gold))),
+    part('arrL','Solar array (left)',PAL.cell,arrText,[-.9,.5,0],arr(-1)),
+    part('arrR','Solar array (right)',PAL.cell,arrText,[.9,.5,0],arr(1)),
+    part('arm','Robotic arm',PAL.metal,'A 1.8 m arm lifted the instruments off the deck and set them on the ground, then pushed soil and shook the panels in the attempts to clear the dust.',[0,.5,.6],cat(cyl([0,1.0,.55],[.15,1.25,1.0],.035,.035,8,PAL.metal),cyl([.15,1.25,1.0],[.25,.95,1.45],.03,.03,8,PAL.metal),box(.1,.08,.1,[.25,.9,1.5],PAL.dark))),
+    part('seis','Seismometer (SEIS)',PAL.white,'The seismometer, shielded from wind and heat by a dome, listened for marsquakes. They revealed the layers inside the planet.',[.5,0,.9],dome(.3,[.9,0,1.7],5,14,PAL.white)),
+    part('hp3','Heat probe (HP3)',PAL.metal,'A self-hammering probe meant to burrow into the soil to measure heat flowing out of Mars. It could not penetrate the ground as planned.',[-.5,0,.9],cat(cyl([-.55,.08,1.55],[-.55,.08,2.1],.07,.07,10,PAL.metal),cyl([-.55,.08,2.1],[-.55,.08,2.3],.07,.015,10,PAL.dark))),
+    part('legs','Landing legs',PAL.metal,'Three legs with crushable footpads absorbed the landing on Elysium Planitia, about 600 km from Curiosity.',[0,-.35,0],legs)
+   ]}}
+
+function mDawn(){
+  const wing=sx=>{const out=[];for(let i=0;i<5;i++){out.push(...box(1.58,2.3,.03,[sx*(.65+.83+i*1.66),0,0],i%2?PAL.panel:PAL.cell))}
+    out.push(...cyl([sx*.6,0,0],[sx*8.95,0,0],.03,.03,6,PAL.metal));return out};
+  const wt='Two five-panel solar wings, about 19.7 m tip to tip, power the ion engine. Without them Dawn could not have spiralled out to the asteroid belt.';
+  return {title:'Dawn',link:'dawn',cam:[.55,.3],fit:.72,
+   summary:'The first spacecraft to orbit two different worlds, Vesta and Ceres. It stopped on 1 November 2018 when its hydrazine ran out.',
+   facts:[['Launch','27 Sep 2007'],['Ceres orbit','March 2015'],['End','1 Nov 2018'],['Final altitude','≈ 35 km']],
+   note:'Wing span is approximate. The plume is an artist\'s idea of the ion exhaust; in reality it is almost invisible.',
+   parts:[
+    part('bus','Spacecraft body',PAL.gold,'The box holds the computers, instruments and tanks. Its hydrazine fuel pointed the antenna at Earth and the panels at the Sun. When it was gone, Dawn missed two contacts, on 31 October and 1 November 2018.',[0,0,0],box(1.3,1.7,1.2,[0,0,0],PAL.gold)),
+    part('hga','High-gain antenna',PAL.white,'The dish sent images and measurements back across the Solar System.',[0,.9,0],cat(mv(dish(.82,.25,22,5,PAL.white),[0,.95,0]),cyl([0,1.2,0],[0,1.5,0],.03,.03,5,PAL.metal))),
+    part('wingW','Solar wing (west)',PAL.panel,wt,[-1.4,0,0],wing(-1)),
+    part('wingE','Solar wing (east)',PAL.panel,wt,[1.4,0,0],wing(1)),
+    part('ion','Ion thrusters',PAL.metal,'Three ion engines, only one firing at a time, pushed xenon ions out at very high speed. The thrust is tiny, about the weight of a sheet of paper, but it never stops. This let Dawn orbit Vesta, leave, and then orbit Ceres.',[0,-.5,0],cat(cyl([-.38,-.85,0],[-.38,-1.2,0],.09,.15,10,PAL.metal),cyl([0,-.85,0],[0,-1.2,0],.09,.15,10,PAL.metal),cyl([.38,-.85,0],[.38,-1.2,0],.09,.15,10,PAL.metal))),
+    part('plume','Ion exhaust',PAL.ice,'The glowing blue-green beam is the ion exhaust, drawn here for effect.',[0,-1.2,0],cyl([0,-1.2,0],[0,-4,0],.12,.6,16,PAL.ice,false),{alpha:.35,nopick:true})
+   ]}}
+
+function mLM(){
+  const legs=[],ladder=[];[0,90,180,270].forEach(a=>{const t=polar(1.75,a,1.9),f=polar(4,a,.04),m=polar(2.97,a,.9),b=polar(1.4,a,1.5);
+    legs.push(...cyl(t,f,.09,.09,6,PAL.gold),...cyl(b,m,.05,.05,5,PAL.metal),...cyl([f[0],.12,f[2]],[f[0],0,f[2]],.5,.55,10,PAL.gold))});
+  [-.25,.25].forEach(x=>ladder.push(...cyl([x,1.95,-2.0],[x,.5,-3.85],.03,.03,5,PAL.metal)));
+  for(let i=0;i<=5;i++){const t=i/5;ladder.push(...cyl([-.25,1.95-1.45*t,-2.0-1.85*t],[.25,1.95-1.45*t,-2.0-1.85*t],.02,.02,4,PAL.metal))}
+  return {title:'Apollo lunar module',link:'apollo12',cam:[.6,.25],
+   summary:'The two-stage craft used in Apollo 11, 12 and 15. The descent stage stayed on the Moon with the science packages; the ascent stage carried the crew back to orbit.',
+   facts:[['Apollo 11 stay','21 h 36'],['Apollo 12 samples','34.35 kg'],['Apollo 15 stay','66 h 55'],['ALSEP shutdown','30 Sep 1977']],
+   note:'Simplified geometry, based on the general layout of the lunar module. Details differ between missions.',
+   parts:[
+    part('asc','Ascent stage',PAL.body,'The crew cabin and its engine. It lifted off to meet the command module. The abandoned stages ended differently: Apollo 12\'s was crashed on purpose about 60 km away, producing the first artificial moonquake recorded; Apollo 15\'s hit the Moon on 3 August 1971.',[0,2.4,0],
+      cat(cyl([0,3.0,0],[0,4.4,0],1.25,1.25,8,PAL.body),box(1.5,.7,1.5,[0,4.75,0],PAL.gold),cyl([-1.5,3.7,-.7],[-1.5,3.7,.7],.5,.5,10,PAL.gold),cyl([1.5,3.7,-.7],[1.5,3.7,.7],.5,.5,10,PAL.gold),box(.5,.35,.05,[-.45,3.9,-1.1],PAL.dark),box(.5,.35,.05,[.45,3.9,-1.1],PAL.dark))),
+    part('ant','Antennas',PAL.metal,'A steerable dish for talking to Earth, a small radar dish for finding the command module in orbit, and a whip antenna.',[0,3.7,0],
+      cat(rot(dish(.38,.12,12,3,PAL.white),[-20,0,15],[0,0,0]).map(t=>[v3.add(t[0],[.9,5.25,.3]),v3.add(t[1],[.9,5.25,.3]),v3.add(t[2],[.9,5.25,.3]),t[3]]),cyl([.9,5.15,.3],[.9,5.4,.3],.03,.03,5,PAL.metal),
+        mv(rot(dish(.3,.1,12,3,PAL.white),[20,0,-10]),[-.8,5.2,-.2]),cyl([0,5.1,.4],[0,6.5,.4],.015,.015,5,PAL.metal))),
+    part('desc','Descent stage',PAL.gold,'The gold-foil octagon holds the descent engine\'s fuel and stowed equipment, such as the EASEP of Apollo 11 and the ALSEP of Apollo 12 and 15. It served as a launch pad for the ascent stage and stays on the Moon.',[0,0,0],
+      cyl([0,1.45,0],[0,2.95,0],1.9,1.9,8,PAL.gold)),
+    part('eng','Descent engine',PAL.metal,'A throttleable engine slowed the craft from lunar orbit to a gentle landing.',[0,-.9,0],cyl([0,1.45,0],[0,.75,0],.25,.75,12,PAL.metal)),
+    part('legs','Landing legs',PAL.gold,'Four legs with wide footpads and crushable struts. The pads spread the load on soil that Surveyor 3 had already tested.',[0,-.5,0],legs),
+    part('lad','Ladder',PAL.metal,'The ladder on the front leg is how the crew went down to the surface.',[0,-.3,-1.2],ladder)
+   ]}}
+
+const MODELS={ingenuity:mIngenuity,pioneer10:mPioneer,insight:mInsight,dawn:mDawn,apollo12:mLM};
+const MODEL_FOR={ingenuity:'ingenuity',pioneer10:'pioneer10',insight:'insight',dawn:'dawn',apollo11:'apollo12',apollo12:'apollo12',apollo15:'apollo12'};
+const MODEL_ORDER=['apollo12','insight','ingenuity','dawn','pioneer10'];
+
+const MV={raf:0,active:false,
+  stop(){this.active=false;cancelAnimationFrame(this.raf);if(this.ro)this.ro.disconnect();this.ro=null}};
+const hexRgb=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+function cssRgb(name,fb){const v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();return /^#[0-9a-f]{6}$/i.test(v)?hexRgb(v):fb}
+
+function initViewer(key){
+  const M0=MODELS[key]();
+  const cv=$('#cv'),ctx=cv.getContext&&cv.getContext('2d');
+  if(!ctx){$('#mvinfo').textContent='This browser cannot draw the 3D view.';return}
+  // centre model
+  let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+  M0.parts.forEach(p=>p.tris.forEach(t=>{for(let i=0;i<3;i++)for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],t[i][k]);mx[k]=Math.max(mx[k],t[i][k])}}));
+  const c=[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2];
+  let R=0;
+  M0.parts.forEach((p,i)=>{p.n=i+1;p.tris=mv(p.tris,v3.scl(c,-1));
+    let s=[0,0,0],n=0;p.tris.forEach(t=>{for(let k=0;k<3;k++){s=v3.add(s,t[k]);n++;R=Math.max(R,v3.len(t[k]))}});p.anchor=v3.scl(s,1/n)});
+  const S={yaw:M0.cam[0],pitch:M0.cam[1],dist:R*2.05*(M0.fit||1),sel:null,hov:null,explode:0,auto:!matchMedia('(prefers-reduced-motion: reduce)').matches,spin:true,dirty:true,W:0,H:0,drawn:[],marks:[]};
+  const D0=R*2.05*(M0.fit||1),Y0=S.yaw,P0=S.pitch;
+  const info=$('#mvinfo'),list=$('#mvparts');
+  const showInfo=()=>{const p=M0.parts.find(q=>q.id===S.sel);
+    info.innerHTML=p?`<div class="eyebrow">Part ${p.n} of ${M0.parts.length}</div><h3>${p.label}</h3><p>${p.text}</p><button class="btn ghost" id="mvclr">Back to overview</button>`
+     :`<div class="eyebrow">Overview</div><h3>${M0.title}</h3><p>${M0.summary}</p><dl class="kv">${M0.facts.map(f=>`<div><dt>${f[0]}</dt><dd>${f[1]}</dd></div>`).join('')}</dl><p class="note">${M0.note}</p><a href="#m-${M0.link}">Read the mission page →</a>`;
+    list.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.id===S.sel));
+    const cl=$('#mvclr');if(cl)cl.onclick=()=>select(null)};
+  const select=id=>{S.sel=id;S.dirty=true;showInfo()};
+  list.innerHTML=M0.parts.map(p=>`<li><button data-id="${p.id}" aria-pressed="false"><span class="num">${p.n}</span>${p.label}</button></li>`).join('');
+  list.querySelectorAll('button').forEach(b=>b.onclick=()=>select(S.sel===b.dataset.id?null:b.dataset.id));
+  showInfo();
+
+  function size(){const r=cv.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+    S.W=r.width;S.H=r.height;cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);S.dirty=true}
+  MV.ro=new ResizeObserver(size);MV.ro.observe(cv);size();
+
+  function draw(time){
+    const W=S.W,H=S.H;if(!W)return;
+    const bg=cssRgb('--scene',[220,228,236]),ac=cssRgb('--accent',[29,78,216]),fg=cssRgb('--fg',[20,32,43]);
+    ctx.globalAlpha=1;ctx.fillStyle=`rgb(${bg})`;ctx.fillRect(0,0,W,H);
+    const f=Math.min(W,H)*1.1,cx=W/2,cy=H/2,cy_=Math.cos(S.yaw),sy=Math.sin(S.yaw),cp=Math.cos(S.pitch),sp=Math.sin(S.pitch);
+    const L=v3.norm([-.45,.65,-.62]);
+    const tv=(p)=>{const x1=cy_*p[0]+sy*p[2],z1=-sy*p[0]+cy_*p[2],y2=cp*p[1]-sp*z1,z2=sp*p[1]+cp*z1;return [x1,y2,z2+S.dist*(1+.45*S.explode)]};
+    const list2=[],marks=[];
+    M0.parts.forEach(p=>{
+      const off=v3.scl(p.ex,S.explode);
+      let sc=0,ss=0;if(p.spin&&S.spin){const a=time/1000*p.spin.rate;sc=Math.cos(a);ss=Math.sin(a)}
+      const isSel=S.sel===p.id,dim=S.sel&&!isSel;
+      p.tris.forEach(t=>{
+        const q=[0,1,2].map(i=>{let v=t[i];if(p.spin&&S.spin){const dx=v[0]-p.spin.pivot[0],dz=v[2]-p.spin.pivot[2];v=[p.spin.pivot[0]+dx*sc+dz*ss,v[1],p.spin.pivot[2]-dx*ss+dz*sc]}return tv(v3.add(v,off))});
+        if(q[0][2]<.2||q[1][2]<.2||q[2][2]<.2)return;
+        const n=v3.norm(v3.cross(v3.sub(q[1],q[0]),v3.sub(q[2],q[0]))),sh=.4+.6*Math.abs(n[0]*L[0]+n[1]*L[1]+n[2]*L[2]);
+        list2.push({q,z:(q[0][2]+q[1][2]+q[2][2])/3,col:t[3]||p.color,sh,p,isSel,dim})});
+      const a=tv(v3.add(p.anchor,off));marks.push({p,x:cx+f*a[0]/a[2],y:cy-f*a[1]/a[2],z:a[2]})});
+    list2.sort((a,b)=>b.z-a.z);
+    S.drawn=[];
+    ctx.lineJoin='round';ctx.lineWidth=.8;
+    list2.forEach(o=>{
+      let c0=hexRgb(o.col);
+      if(o.isSel)c0=c0.map((v,i)=>v*.45+ac[i]*.55);
+      const k=o.sh*(o.dim?.7:1);
+      let r=c0[0]*k,g=c0[1]*k,b=c0[2]*k;
+      if(o.dim){r=r*.6+bg[0]*.4;g=g*.6+bg[1]*.4;b=b*.6+bg[2]*.4}
+      if(S.hov===o.p.id&&!o.isSel){r=Math.min(255,r+28);g=Math.min(255,g+28);b=Math.min(255,b+28)}
+      const pts=o.q.map(v=>[cx+f*v[0]/v[2],cy-f*v[1]/v[2]]);
+      ctx.globalAlpha=o.p.alpha||1;
+      ctx.fillStyle=`rgb(${r|0},${g|0},${b|0})`;ctx.strokeStyle=`rgba(${(r*.6)|0},${(g*.6)|0},${(b*.6)|0},${o.p.alpha?0:.55})`;
+      ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);ctx.lineTo(pts[1][0],pts[1][1]);ctx.lineTo(pts[2][0],pts[2][1]);ctx.closePath();ctx.fill();ctx.stroke();
+      if(!o.p.nopick)S.drawn.push({pts,p:o.p})});
+    ctx.globalAlpha=1;
+    ctx.font='500 11px "JetBrains Mono",ui-monospace,monospace';ctx.textAlign='right';ctx.textBaseline='alphabetic';ctx.fillStyle=`rgba(${fg},.6)`;ctx.fillText('AI-generated 3D model',W-10,H-10);
+    // numbered markers
+    marks.sort((a,b)=>b.z-a.z);S.marks=marks;
+    ctx.font='600 11px "JetBrains Mono",ui-monospace,monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    marks.forEach(m=>{const on=S.sel===m.p.id;
+      ctx.beginPath();ctx.arc(m.x,m.y,10,0,7);ctx.fillStyle=on?`rgb(${ac})`:`rgb(${bg})`;ctx.fill();
+      ctx.lineWidth=1.6;ctx.strokeStyle=`rgb(${ac})`;ctx.stroke();
+      ctx.fillStyle=on?'#fff':`rgb(${fg})`;ctx.fillText(m.p.n,m.x,m.y+.5)});
+  }
+  function pick(x,y){
+    for(let i=S.marks.length-1;i>=0;i--){const m=S.marks[i];if(Math.hypot(m.x-x,m.y-y)<=13)return m.p.id}
+    for(let i=S.drawn.length-1;i>=0;i--){const {pts:[a,b,c],p}=S.drawn[i];
+      const d=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]),l1=((b[1]-c[1])*(x-c[0])+(c[0]-b[0])*(y-c[1]))/d,l2=((c[1]-a[1])*(x-c[0])+(a[0]-c[0])*(y-c[1]))/d;
+      if(l1>=0&&l2>=0&&l1+l2<=1)return p.id}
+    return null}
+  // interaction
+  let drag=null;
+  const rel=e=>{const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]};
+  cv.onpointerdown=e=>{cv.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,moved:0};cv.style.cursor='grabbing'};
+  cv.onpointermove=e=>{
+    if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;
+      if(drag.moved>4){S.auto=false;syncAuto();S.yaw-=dx*.009;S.pitch=Math.max(-1.45,Math.min(1.45,S.pitch+dy*.009));S.dirty=true}}
+    else{const [x,y]=rel(e),h=pick(x,y);if(h!==S.hov){S.hov=h;cv.style.cursor=h?'pointer':'grab';S.dirty=true}}};
+  cv.onpointerup=e=>{if(drag&&drag.moved<=4){const [x,y]=rel(e),id=pick(x,y);select(id&&id!==S.sel?id:null)}drag=null;cv.style.cursor='grab'};
+  cv.onpointercancel=()=>{drag=null};
+  cv.onkeydown=e=>{const k=e.key;
+    if(k==='ArrowLeft'){S.yaw+=.1}else if(k==='ArrowRight'){S.yaw-=.1}else if(k==='ArrowUp'){S.pitch=Math.min(1.45,S.pitch+.1)}else if(k==='ArrowDown'){S.pitch=Math.max(-1.45,S.pitch-.1)}
+    else if(k==='+'||k==='='){zoom(.88)}else if(k==='-'){zoom(1.14)}else if(k==='Escape'){select(null)}else return;
+    S.auto=false;syncAuto();S.dirty=true;e.preventDefault()};
+  const zoom=m=>{S.dist=Math.max(D0*.35,Math.min(D0*2.4,S.dist*m));S.dirty=true};
+  const syncAuto=()=>{const b=$('#mvauto');if(b)b.setAttribute('aria-pressed',S.auto)};
+  $('#mvauto').onclick=()=>{S.auto=!S.auto;syncAuto()};syncAuto();
+  $('#mvreset').onclick=()=>{S.yaw=Y0;S.pitch=P0;S.dist=D0;S.explode=0;$('#mvex').value=0;S.dirty=true};
+  $('#mvzin').onclick=()=>zoom(.85);$('#mvzout').onclick=()=>zoom(1.18);
+  $('#mvex').oninput=e=>{S.explode=+e.target.value/100;S.dirty=true};
+  const sb=$('#mvspin');if(M0.spin){sb.hidden=false;sb.onclick=()=>{S.spin=!S.spin;sb.setAttribute('aria-pressed',S.spin);S.dirty=true}}
+  // loop
+  MV.active=true;let last=performance.now();
+  const loop=t=>{if(!MV.active)return;const dt=Math.min(.05,(t-last)/1000);last=t;
+    if(S.auto){S.yaw+=dt*.35;S.dirty=true}
+    if(M0.spin&&S.spin)S.dirty=true;
+    if(S.dirty){S.dirty=false;draw(t)}
+    MV.raf=requestAnimationFrame(loop)};
+  MV.raf=requestAnimationFrame(loop);
+}
+function vModels(key){
+  key=MODELS[key]?key:MODEL_ORDER[0];
+  const titles={apollo12:'Apollo lunar module',insight:'InSight',ingenuity:'Ingenuity',dawn:'Dawn',pioneer10:'Pioneer 10'};
+  return `<a class="back" href="#contents">← Contents</a>
+  <section class="section" style="margin-top:1rem"><div class="eyebrow">Plate 4</div><h1 class="pg-title">3D models</h1>
+  <p class="lead">Drag to turn a craft around. Click a numbered marker, a part or an item in the list for details, and use the slider to pull it apart.</p>
+  <div class="chips" style="margin-top:1rem" role="group" aria-label="Choose a spacecraft">${MODEL_ORDER.map(k=>`<a class="chip" href="#model-${k}" aria-pressed="${k===key}">${titles[k]}</a>`).join('')}</div>
+  <div class="mv">
+    <div class="mv-stage">
+      <canvas id="cv" tabindex="0" role="img" aria-label="Interactive 3D model of ${titles[key]}. Use arrow keys to rotate, plus and minus to zoom."></canvas>
+      <div class="mv-ctl">
+        <button class="btn ghost" id="mvauto" aria-pressed="true">Auto-rotate</button>
+        <button class="btn ghost" id="mvspin" aria-pressed="true" hidden>Spin rotors</button>
+        <button class="btn ghost" id="mvzout" aria-label="Zoom out">−</button><button class="btn ghost" id="mvzin" aria-label="Zoom in">+</button>
+        <button class="btn ghost" id="mvreset">Reset</button>
+        <label class="mv-ex">Pull apart <input type="range" id="mvex" min="0" max="100" value="0"></label>
+      </div>
+    </div>
+    <div class="mv-side"><div class="box" id="mvinfo"></div><ol class="mv-parts" id="mvparts"></ol></div>
+  </div></section>`;
+}
+
+/* ---------- flipbook ---------- */
+const FB={stop(){document.removeEventListener('keydown',this.key||(()=>{}));if(this.ro)this.ro.disconnect();this.ro=null;clearTimeout(this.t)}};
+const MS=3; // first mission page index
+function fbPages(){
+  const P=[];
+  const eb=(t)=>`<div class="eyebrow">${t}</div>`;
+  const chipGo=(id)=>`<button class="gochip" data-go="${MS+2*M.findIndex(m=>m.id===id)}">${byId[id].name}</button>`;
+  // 0 cover
+  P.push({cover:true,html:`<div class="pagein cover">
+    <div class="cv-top">${eb('NASA · 13 missions · 1967 to 2024')}</div>
+    <div class="cv-art il">${ILL.pioneer10()}</div>
+    <h1>SpaceHistory</h1>
+    <p>The history of NASA\'s retired spacecraft</p>
+    <div class="cv-row il"><div>${ILL.ingenuity()}</div><div>${ILL.kepler()}</div><div>${ILL.apollo12()}</div></div>
+  </div>`});
+  // 1 about
+  P.push({html:`<div class="pagein">${eb('About this book')}<h2>Why these thirteen?</h2>
+    <p>Each of these NASA spacecraft sent back its last signal and then fell silent. Some ran out of fuel, some were buried by dust, some were switched off by a decision on the ground.</p>
+    <p>For every one you will find why it was built, how it worked, why it stopped, where it rests, how long it lasted and how it connects to the others.</p>
+    <h3>Why they stopped</h3>
+    <ul class="lg">${Object.values(CAUSES).map(c=>`<li><span class="dot" style="--c:${c.c}"></span>${c.t}</li>`).join('')}</ul>
+    <p class="mut">Turn the pages with the arrows, the keyboard, or by clicking a page.</p></div>`});
+  // 2 contents
+  P.push({html:`<div class="pagein">${eb('Contents')}<h2>Inside</h2>
+    <ol class="toc">${M.map((m,i)=>`<li><button class="gochip toc-b" data-go="${MS+2*i}"><span>${m.name}</span><i></i><b>${MS+2*i+1}</b></button></li>`).join('')}
+    <li><button class="gochip toc-b" data-go="29"><span>Planned versus actual</span><i></i><b>30</b></button></li>
+    <li><button class="gochip toc-b" data-go="30"><span>Timeline</span><i></i><b>31</b></button></li>
+    <li><button class="gochip toc-b" data-go="31"><span>What connects them</span><i></i><b>32</b></button></li>
+    <li><button class="gochip toc-b" data-go="33"><span>Sources</span><i></i><b>34</b></button></li></ol></div>`});
+  // missions
+  M.forEach(m=>{
+    const d=life(m);
+    P.push({html:`<div class="pagein l"><div class="ph2"><img src="img/${m.id}.jpg" alt="${m.cap}" style="object-position:${m.pos}"><div class="inset il">${ILL[m.id]()}</div></div>
+      <div class="cap">${m.cap}</div>
+      <div class="eyebrow">${PLACES[m.place]} · ${m.launch.slice(0,4)} → ${m.end.slice(0,4)}</div>
+      <h2>${m.name}</h2><p class="tag">${m.tagline}</p><div>${badge(m.cause)}</div>
+      <dl class="vt"><div><dt>Launch</dt><dd>${fmtD(m.launch)}</dd></div><div><dt>In service</dt><dd>${fmtD(m.start)}</dd></div><div><dt>Last contact</dt><dd>${fmtD(m.end)}</dd></div><div><dt>Lifespan</dt><dd>${d<365?nf(d)+' days':yrs(d)}</dd></div><div class="wide"><dt>Where</dt><dd>${m.where}</dd></div></dl>
+      <div class="kf">${m.facts.map(f=>`<span><i>${f[0]}</i> ${f[1]}</span>`).join('')}</div></div>`});
+    P.push({html:`<div class="pagein r">
+      <h3>Why it was built</h3><p>${m.purpose}</p>
+      <h3>History</h3>${m.story.map(p=>`<p>${p}</p>`).join('')}
+      <h3>Technology</h3><ul>${m.tech.map(t=>`<li>${t}</li>`).join('')}</ul>
+      <h3>Why it stopped</h3><p>${m.stop}</p>
+      <div class="see"><span>Connected to</span> ${m.rel.map(([k])=>chipGo(k)).join('')}${MODEL_FOR[m.id]?` <a class="gochip" href="#model-${MODEL_FOR[m.id]}">3D model</a>`:''}</div></div>`});
+  });
+  // 29 lifespans
+  const rows=[];M.forEach(m=>m.spans.forEach(x=>{if(x.p)rows.push({m,x,a:days(x.a,x.b)})}));
+  const hi=Math.log10(20000)-1,pos=v=>(Math.log10(v)-1)/hi*100,ticks=[10,100,1000,10000];
+  P.push({html:`<div class="pagein">${eb('Plate 1')}<h2>Planned versus actual</h2>
+    <p class="mut">Hollow dot: planned. Solid dot: actual. Each tick is ten times the last.</p>
+    <div class="lrows">${rows.sort((a,b)=>b.a/b.x.p-a.a/a.x.p).map(({m,x,a})=>{const l=Math.min(pos(x.p),pos(a)),r=Math.max(pos(x.p),pos(a)),k=a/x.p;
+      return `<div class="lr" style="--c:${CAUSES[m.cause].c}"><div class="ll"><b>${x.l}</b><span>${nf(x.p)} → ${nf(a)} d · ${k.toFixed(k<10?1:0)}×</span></div>
+      <div class="ctrack">${ticks.map(t=>`<i class="tick" style="left:${pos(t)}%"></i>`).join('')}<i class="cline" style="left:${l}%;width:${r-l}%"></i><i class="cp" style="left:${pos(x.p)}%"></i><i class="cr" style="left:${pos(a)}%"></i></div></div>`}).join('')}</div>
+    <div class="ax">${ticks.map(t=>`<span style="left:${pos(t)}%">${nf(t)} d</span>`).join('')}</div></div>`});
+  // 30 timeline
+  const t0=Date.parse('1966-01-01'),t1=Date.parse('2026-01-01'),pp=d=>(Date.parse(d)-t0)/(t1-t0)*100,ys=[1970,1980,1990,2000,2010,2020];
+  P.push({html:`<div class="pagein">${eb('Plate 2')}<h2>Fifty-seven years of silences</h2>
+    <div class="trows">${[...M].sort((a,b)=>a.launch.localeCompare(b.launch)).map(m=>`<div class="tr" style="--c:${CAUSES[m.cause].c}"><span class="tl">${m.name}</span><div class="gtrack">${ys.map(y=>`<i class="gvl" style="left:${pp(y+'-01-01')}%"></i>`).join('')}<i class="gbar" style="left:${pp(m.launch)}%;width:${pp(m.end)-pp(m.launch)}%"></i></div></div>`).join('')}</div>
+    <div class="ax tax">${ys.map(y=>`<span style="left:${pp(y+'-01-01')}%">${y}</span>`).join('')}</div>
+    <ul class="lg">${Object.values(CAUSES).map(c=>`<li><span class="dot" style="--c:${c.c}"></span>${c.t}</li>`).join('')}</ul></div>`});
+  // 31 threads, 32 lineages
+  P.push({html:`<div class="pagein">${eb('Plate 3')}<h2>Common threads</h2>
+    ${THREADS.map(f=>`<div class="th"><h3>${f.t}</h3><p>${f.d}</p><div>${f.m.map(chipGo).join('')}</div></div>`).join('')}</div>`});
+  P.push({html:`<div class="pagein">${eb('Plate 3, continued')}<h2>Lineages</h2>
+    ${REL.map(([a,b,w])=>`<div class="rl"><div>${chipGo(a)} <span class="mut">↔</span> ${chipGo(b)}</div><p>${w}</p></div>`).join('')}</div>`});
+  // 33 sources, 34 colophon, 35 end
+  P.push({html:`<div class="pagein">${eb('References')}<h2>Sources</h2>
+    <ol class="src2">${SOURCES.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${t}</a></li>`).join('')}</ol></div>`});
+  P.push({html:`<div class="pagein">${eb('Colophon')}<h2>Credits</h2>
+    <p>Data: NASA and NSSDC mission pages listed under Sources.</p><p>Photos and artwork: NASA.</p>
+    <p>Schematic drawings and 3D models: AI-generated for this book, simplified and not to scale.</p>
+    <p>NASA calls these missions “completed” or “successful”, not “abandoned”.</p>
+    <p><a class="gochip" href="#models">Explore the 3D models →</a></p></div>`});
+  P.push({html:`<div class="pagein endp"><div class="eyebrow">End of transmission</div><h2>SpaceHistory</h2><p class="mut">Thirteen craft, one by one, went quiet.</p><button class="btn" data-go="0">Back to the cover</button></div>`});
+  return P;
+}
+function vBook(){
+  return `<a class="back" href="#contents">← Contents</a>
+  <div class="fbclip"><div class="fbk" id="fbk" aria-live="off"></div></div>
+  <div class="fb-ctl"><button class="btn ghost" id="fbprev">← Previous</button><span id="fbpos" class="mono"></span><button class="btn ghost" id="fbnext">Next →</button><button class="btn ghost" id="fbtoc">Contents</button></div>`;
+}
+function initBook(){
+  const P=fbPages(),N=P.length,K=N/2;
+  const bk=$('#fbk');let single=null,pg=0,cur=0;
+  const key=e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;if(e.key==='ArrowRight')next();else if(e.key==='ArrowLeft')prev()};
+  FB.key=key;document.addEventListener('keydown',key);
+  const pnum=(i,h)=>i===0?h:h.replace(/<\/div>$/,`<span class="pn ${i%2?'l':'r'}">${i+1}</span></div>`);
+  function fit(){if(single)return;bk.querySelectorAll('.pagein').forEach(p=>{p.style.setProperty('--k',1);let k=1,n=0;while(p.scrollHeight>p.clientHeight+1&&n<16){k*=.95;p.style.setProperty('--k',k);n++}})}
+  function build(){
+    bk.className='fbk '+(single?'single':'spread');
+    if(single){bk.innerHTML=P.map((p,i)=>`<section class="pgs" data-i="${i}"><div class="face${p.cover?' coverface':''}">${pnum(i,p.html)}</div></section>`).join('')}
+    else{let h='';for(let k=0;k<K;k++){h+=`<div class="leaf" data-k="${k}"><div class="face front${P[2*k].cover?' coverface':''}" data-i="${2*k}">${pnum(2*k,P[2*k].html)}</div><div class="face back" data-i="${2*k+1}">${pnum(2*k+1,P[2*k+1].html)}</div></div>`}bk.innerHTML=h}
+    paint(true);
+    requestAnimationFrame(fit);
+  }
+  function paint(init){
+    if(single){bk.querySelectorAll('.pgs').forEach(s=>{const i=+s.dataset.i;s.className='pgs '+(i===pg?'on':i<pg?'before':'after')})}
+    else{bk.querySelectorAll('.leaf').forEach(l=>{const k=+l.dataset.k;l.classList.toggle('turned',k<cur);if(init)l.style.zIndex=k<cur?k+1:K-k});
+      bk.classList.toggle('s-start',cur===0);bk.classList.toggle('s-end',cur===K)}
+    const lab=single?`Page ${pg+1} of ${N}`:(cur===0?'Cover':cur===K?`Page ${N}`:`Pages ${2*cur} – ${2*cur+1}`);
+    $('#fbpos').textContent=lab;
+    $('#fbprev').disabled=single?pg===0:cur===0;$('#fbnext').disabled=single?pg===N-1:cur===K;
+  }
+  function go(t){
+    t=Math.max(0,Math.min(N-1,t));
+    if(single){pg=t;cur=Math.ceil(pg/2);paint();window.scrollTo({top:0});return}
+    const target=Math.ceil(t/2);pg=t;if(target===cur)return;
+    const dir=target>cur?1:-1;let d=0;
+    for(let k=cur;k!==target;k+=dir){const leaf=dir>0?k:k-1,L=bk.querySelector(`.leaf[data-k="${leaf}"]`);
+      L.style.zIndex=60+d;setTimeout(()=>L.classList.toggle('turned',dir>0),d*90);d++}
+    const from=cur;cur=target;
+    clearTimeout(FB.t);FB.t=setTimeout(()=>{bk.querySelectorAll('.leaf').forEach(l=>{const k=+l.dataset.k;l.style.zIndex=k<cur?k+1:K-k})},d*90+950);
+    bk.classList.toggle('s-start',cur===0);bk.classList.toggle('s-end',cur===K);
+    $('#fbpos').textContent=cur===0?'Cover':cur===K?`Page ${N}`:`Pages ${2*cur} – ${2*cur+1}`;
+    $('#fbprev').disabled=cur===0;$('#fbnext').disabled=cur===K;
+  }
+  const next=()=>go(single?pg+1:2*cur+1);
+  const prev=()=>go(single?pg-1:(cur===1?0:2*cur-3));
+  $('#fbnext').onclick=next;$('#fbprev').onclick=prev;$('#fbtoc').onclick=()=>go(2);
+  bk.addEventListener('click',e=>{
+    const g=e.target.closest('[data-go]');if(g){go(+g.dataset.go);e.preventDefault();return}
+    if(e.target.closest('a,button,input'))return;
+    const f=e.target.closest('.face');if(!f)return;
+    if(single){const r=f.getBoundingClientRect();(e.clientX-r.left<r.width*.25)?prev():next();return}
+    (+f.dataset.i%2===0)?next():prev()});
+  let sx=null;bk.addEventListener('pointerdown',e=>{sx=e.clientX});
+  bk.addEventListener('pointerup',e=>{if(single&&sx!==null){const dx=e.clientX-sx;if(Math.abs(dx)>60){dx<0?next():prev()}}sx=null});
+  const wrap=bk.parentElement;
+  const mode=()=>{const s=wrap.getBoundingClientRect().width<860;if(s!==single){single=s;if(single){pg=Math.max(0,2*cur-1)}else{cur=Math.ceil(pg/2)}build()}else fit()};
+  FB.ro=new ResizeObserver(mode);FB.ro.observe(wrap);mode();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+}
+
+/* ---------- router ---------- */
+function route(){
+  MV.stop();FB.stop();
+  $('#app').classList.toggle('wide',(location.hash||'').startsWith('#book'));
+  const h=(location.hash||'#contents').slice(1);
+  let v=h,html;
+  if(h.startsWith('m-')){html=vPage(h.slice(2));v='page'}
+  else if(h==='book'){html=vBook();v='book'}
+  else if(h==='models'||h.startsWith('model-')){const k=h.slice(6);html=vModels(k==='s'||!k?'':k);v='models'}
+  else if(h==='lifespans')html=vLifespans();
+  else if(h==='timeline')html=vTimeline();
+  else if(h==='links')html=vLinks();
+  else if(h==='sources')html=vSources();
+  else{html=vContents();v='contents'}
+  $('#app').innerHTML=html;
+  document.querySelectorAll('#nav a').forEach(a=>a.getAttribute('data-v')===v?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
+  window.scrollTo(0,0);
+  if(v==='book')initBook();
+  if(v==='models')initViewer(MODELS[h.slice(6)]?h.slice(6):MODEL_ORDER[0]);
+  const rb=$('#readbtn');
+  if(rb)rb.onclick=()=>{const id=h.slice(2);READ=READ.includes(id)?READ.filter(x=>x!==id):[...READ,id];saveRead();route()};
+  document.querySelectorAll('.chip[data-f]').forEach(b=>b.onclick=()=>{
+    if(b.dataset.f==='place')fPlace=b.dataset.k;else fCause=b.dataset.k;
+    document.querySelectorAll(`.chip[data-f="${b.dataset.f}"]`).forEach(x=>x.setAttribute('aria-pressed',x===b));
+    $('#grid').innerHTML=gridHtml();
+  });
+}
+window.addEventListener('hashchange',route);
+route();
+</script>
+
+</body>
+</html>
